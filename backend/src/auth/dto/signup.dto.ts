@@ -23,7 +23,15 @@ export class SignupDto {
   })
   password: string;
 
+<<<<<<< HEAD
   @IsString()
   @Match('password', { message: 'Passwords do not match' })
   confirmPassword: string;
 }
+=======
+        @IsString()
+        @IsNotEmpty()
+        @Match('password', { message: 'Passwords do not match' })
+        confirmPassword: string;
+}
+>>>>>>> 811b923ba13826db33b1f7823a245cb4043faeec

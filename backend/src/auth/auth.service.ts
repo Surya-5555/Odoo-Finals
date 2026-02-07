@@ -27,6 +27,10 @@ export class AuthService {
   // signup service logic
   async signup(dto: SignupDto) {
     try {
+      if (dto.password !== dto.confirmPassword) {
+        throw new BadRequestException('Passwords do not match');
+      }
+
       const existingUser = await this.prisma.user.findUnique({
         where: {
           email: dto.email,
