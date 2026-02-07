@@ -1,9 +1,4 @@
-import {
-  IsNumber,
-  IsOptional,
-  Min,
-  IsInt,
-} from 'class-validator';
+import { IsNumber, IsOptional, Min, IsInt } from 'class-validator';
 
 export class CreateSubscriptionLineDto {
   @IsInt()
@@ -25,5 +20,18 @@ export class CreateSubscriptionLineDto {
   @IsOptional()
   @IsNumber()
   @Min(0)
+  discountFixed?: number;
+
+  @IsOptional()
+  @IsInt()
+  discountId?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
   taxPercent?: number;
+
+  @IsOptional()
+  @IsInt()
+  taxId?: number;
 }

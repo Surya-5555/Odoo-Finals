@@ -1,0 +1,583 @@
+{
+  "info": {
+    "_postman_id": "e7c2d8f8-61cc-4b28-a1ce-1e3f1b8e7b2f",
+    "name": "Odoo Finals Backend - TEST",
+    "description": "Test collection for the current backend routes.\n\nNotes:\n- Set {{baseUrl}} (default http://localhost:3000).\n- For ADMIN login, set env vars ADMIN_EMAIL before starting the backend; the server prints the bootstrap admin password once in the console logs. Put that into {{adminPassword}}.\n- This collection uses Bearer {{accessToken}} at the collection level. Login requests save it automatically.\n- Invoice scheduler is set to run EVERY_MINUTE in this workspace for testing.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Auto-add JSON header for requests with bodies",
+          "pm.request.headers.upsert({ key: 'Accept', value: 'application/json' });",
+          "if (pm.request.body && pm.request.body.mode === 'raw') {",
+          "  pm.request.headers.upsert({ key: 'Content-Type', value: 'application/json' });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "00 - Health",
+      "item": [
+        {
+          "name": "Health - GET /",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/"
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 - Auth",
+      "item": [
+        {
+          "name": "Auth - Signup (PORTAL)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/signup",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Portal User\",\n  \"email\": \"{{portalEmail}}\",\n  \"password\": \"{{portalPassword}}\",\n  \"confirmPassword\": \"{{portalPassword}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Auth - Login (ADMIN) [saves accessToken]",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login returns accessToken', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('accessToken');",
+                  "});",
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  if (json && json.accessToken) pm.environment.set('accessToken', json.accessToken);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Auth - Login (PORTAL) [saves accessToken]",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{portalEmail}}\",\n  \"password\": \"{{portalPassword}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login returns accessToken', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('accessToken');",
+                  "});",
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  if (json && json.accessToken) pm.environment.set('accessToken', json.accessToken);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Auth - Refresh (cookie-based)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/refresh"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Refresh returns accessToken', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('accessToken');",
+                  "});",
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  if (json && json.accessToken) pm.environment.set('accessToken', json.accessToken);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Auth - Logout (cookie-based)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/logout"
+          }
+        },
+        {
+          "name": "Auth - Create Internal User (ADMIN only)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/internal-user",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Internal User\",\n  \"email\": \"{{internalEmail}}\",\n  \"password\": \"{{internalPassword}}\",\n  \"confirmPassword\": \"{{internalPassword}}\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Master Data (ADMIN)",
+      "item": [
+        {
+          "name": "Products",
+          "item": [
+            {
+              "name": "Product - Create",
+              "request": {
+                "method": "POST",
+                "url": "{{baseUrl}}/products",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Test Product\",\n  \"productType\": \"SERVICE\",\n  \"salesPrice\": 100,\n  \"costPrice\": 40,\n  \"description\": \"Postman test product\"\n}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "try {",
+                      "  const json = pm.response.json();",
+                      "  if (json && json.id != null) pm.environment.set('productId', String(json.id));",
+                      "} catch (e) {}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Product - List",
+              "request": { "method": "GET", "url": "{{baseUrl}}/products" }
+            },
+            {
+              "name": "Product - Get One",
+              "request": { "method": "GET", "url": "{{baseUrl}}/products/{{productId}}" }
+            },
+            {
+              "name": "Variant - Add",
+              "request": {
+                "method": "POST",
+                "url": "{{baseUrl}}/products/{{productId}}/variants",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"attribute\": \"Color\",\n  \"value\": \"Red\",\n  \"extraPrice\": 10\n}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "try {",
+                      "  const json = pm.response.json();",
+                      "  if (json && json.id != null) pm.environment.set('variantId', String(json.id));",
+                      "} catch (e) {}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Variant - List",
+              "request": { "method": "GET", "url": "{{baseUrl}}/products/{{productId}}/variants" }
+            }
+          ]
+        },
+        {
+          "name": "Recurring Plans",
+          "item": [
+            {
+              "name": "Plan - Create",
+              "request": {
+                "method": "POST",
+                "url": "{{baseUrl}}/recurring-plans",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Monthly Plan\",\n  \"minQuantity\": 1,\n  \"prices\": [\n    {\n      \"price\": 100,\n      \"billingPeriodValue\": 1,\n      \"billingPeriodUnit\": \"MONTH\",\n      \"isDefault\": true\n    }\n  ]\n}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "try {",
+                      "  const json = pm.response.json();",
+                      "  if (json && json.id != null) pm.environment.set('recurringPlanId', String(json.id));",
+                      "} catch (e) {}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Plan - List",
+              "request": { "method": "GET", "url": "{{baseUrl}}/recurring-plans" }
+            }
+          ]
+        },
+        {
+          "name": "Payment Terms",
+          "item": [
+            {
+              "name": "Payment Term - Create",
+              "request": {
+                "method": "POST",
+                "url": "{{baseUrl}}/payment-terms",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Net 15\",\n  \"dueAfterDays\": 15\n}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "try {",
+                      "  const json = pm.response.json();",
+                      "  if (json && json.id != null) pm.environment.set('paymentTermId', String(json.id));",
+                      "} catch (e) {}"
+                    ]
+                  }
+                }
+              ]
+            },
+            { "name": "Payment Term - List", "request": { "method": "GET", "url": "{{baseUrl}}/payment-terms" } }
+          ]
+        },
+        {
+          "name": "Quotation Templates",
+          "item": [
+            {
+              "name": "Quotation Template - Create",
+              "request": {
+                "method": "POST",
+                "url": "{{baseUrl}}/quotation-templates",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Default Template\",\n  \"content\": \"Hello, this is a template.\"\n}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "try {",
+                      "  const json = pm.response.json();",
+                      "  if (json && json.id != null) pm.environment.set('quotationTemplateId', String(json.id));",
+                      "} catch (e) {}"
+                    ]
+                  }
+                }
+              ]
+            },
+            { "name": "Quotation Template - List", "request": { "method": "GET", "url": "{{baseUrl}}/quotation-templates" } }
+          ]
+        },
+        {
+          "name": "Taxes",
+          "item": [
+            {
+              "name": "Tax - Create",
+              "request": {
+                "method": "POST",
+                "url": "{{baseUrl}}/taxes",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"VAT 10%\",\n  \"percentage\": 10,\n  \"active\": true\n}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "try {",
+                      "  const json = pm.response.json();",
+                      "  if (json && json.id != null) pm.environment.set('taxId', String(json.id));",
+                      "} catch (e) {}"
+                    ]
+                  }
+                }
+              ]
+            },
+            { "name": "Tax - List", "request": { "method": "GET", "url": "{{baseUrl}}/taxes" } }
+          ]
+        },
+        {
+          "name": "Discounts",
+          "item": [
+            {
+              "name": "Discount - Create (FIXED)",
+              "request": {
+                "method": "POST",
+                "url": "{{baseUrl}}/discounts",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Fixed 5\",\n  \"type\": \"FIXED\",\n  \"fixed\": 5,\n  \"appliesTo\": \"PRODUCT\",\n  \"productId\": {{productId}},\n  \"active\": true\n}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "try {",
+                      "  const json = pm.response.json();",
+                      "  if (json && json.id != null) pm.environment.set('discountId', String(json.id));",
+                      "} catch (e) {}"
+                    ]
+                  }
+                }
+              ]
+            },
+            { "name": "Discount - List", "request": { "method": "GET", "url": "{{baseUrl}}/discounts" } }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 - Contacts",
+      "item": [
+        {
+          "name": "Contact - Create",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/contacts",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Contact\",\n  \"email\": \"test.contact@example.com\",\n  \"phone\": \"123456789\",\n  \"address\": \"Somewhere\",\n  \"companyName\": \"Test Co\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  if (json && json.id != null) pm.environment.set('contactId', String(json.id));",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        { "name": "Contact - List", "request": { "method": "GET", "url": "{{baseUrl}}/contacts" } },
+        { "name": "Contact - Get One", "request": { "method": "GET", "url": "{{baseUrl}}/contacts/{{contactId}}" } }
+      ]
+    },
+    {
+      "name": "04 - Subscriptions",
+      "item": [
+        {
+          "name": "Subscription - Create",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/subscriptions",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contactId\": {{contactId}},\n  \"recurringPlanId\": {{recurringPlanId}},\n  \"paymentTermId\": {{paymentTermId}},\n  \"quotationTemplateId\": {{quotationTemplateId}},\n  \"lines\": [\n    {\n      \"productId\": {{productId}},\n      \"quantity\": 1,\n      \"unitPrice\": 100,\n      \"discountId\": {{discountId}},\n      \"taxId\": {{taxId}}\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  if (json && json.id != null) pm.environment.set('subscriptionId', String(json.id));",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        { "name": "Subscription - List", "request": { "method": "GET", "url": "{{baseUrl}}/subscriptions" } },
+        { "name": "Subscription - Get One (saves nextInvoiceDate)", "request": { "method": "GET", "url": "{{baseUrl}}/subscriptions/{{subscriptionId}}" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  if (json && json.nextInvoiceDate) pm.environment.set('subscriptionNextInvoiceDate', String(json.nextInvoiceDate));",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        { "name": "Subscription - Confirm", "request": { "method": "POST", "url": "{{baseUrl}}/subscriptions/{{subscriptionId}}/confirm" } },
+        { "name": "Subscription - Create Invoice", "request": { "method": "POST", "url": "{{baseUrl}}/subscriptions/{{subscriptionId}}/invoices" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  if (json && json.id != null) pm.environment.set('invoiceId', String(json.id));",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 - Invoices",
+      "item": [
+        { "name": "Invoice - List", "request": { "method": "GET", "url": "{{baseUrl}}/invoices" } },
+        { "name": "Invoice - List (by subscriptionId) [sets invoiceId]", "request": { "method": "GET", "url": "{{baseUrl}}/invoices?subscriptionId={{subscriptionId}}" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  const inv = json && Array.isArray(json.data) ? json.data[0] : null;",
+                  "  if (inv && inv.id != null) pm.environment.set('invoiceId', String(inv.id));",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        { "name": "Invoice - Get One (sets totals)", "request": { "method": "GET", "url": "{{baseUrl}}/invoices/{{invoiceId}}" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const inv = pm.response.json();",
+                  "  const lines = Array.isArray(inv.lines) ? inv.lines : [];",
+                  "  const payments = Array.isArray(inv.payments) ? inv.payments : [];",
+                  "  const total = lines.reduce((s, l) => s + Number(l.amount || 0), 0);",
+                  "  const paid = payments.reduce((s, p) => s + Number(p.amount || 0), 0);",
+                  "  const outstanding = Math.max(0, Math.round((total - paid) * 100) / 100);",
+                  "  pm.environment.set('invoiceTotal', String(total));",
+                  "  pm.environment.set('invoiceOutstanding', String(outstanding));",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        { "name": "Invoice - Confirm", "request": { "method": "POST", "url": "{{baseUrl}}/invoices/{{invoiceId}}/confirm" } },
+        { "name": "Invoice - Cancel", "request": { "method": "POST", "url": "{{baseUrl}}/invoices/{{invoiceId}}/cancel" } }
+      ]
+    },
+    {
+      "name": "06 - Payments",
+      "item": [
+        {
+          "name": "Payment - Create (use invoiceOutstanding)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/payments",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invoiceId\": {{invoiceId}},\n  \"method\": \"CASH\",\n  \"amount\": {{invoiceOutstanding}}\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  if (json && json.id != null) pm.environment.set('paymentId', String(json.id));",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        { "name": "Payment - List", "request": { "method": "GET", "url": "{{baseUrl}}/payments" } },
+        { "name": "Payment - Get One", "request": { "method": "GET", "url": "{{baseUrl}}/payments/{{paymentId}}" } }
+      ]
+    },
+    {
+      "name": "07 - Reports",
+      "item": [
+        { "name": "Report - Summary", "request": { "method": "GET", "url": "{{baseUrl}}/reports/summary" } }
+      ]
+    }
+  ]
+}

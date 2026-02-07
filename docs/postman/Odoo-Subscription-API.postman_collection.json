@@ -1,0 +1,350 @@
+{
+  "info": {
+    "name": "Odoo Subscription API",
+    "description": "Recurring Plan & Subscription Management. Set {{token}} after Login (Step 1b).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "token", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Auth",
+      "item": [
+        {
+          "name": "Signup",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"postman@test.com\",\n  \"password\": \"Test@1234\",\n  \"confirmPassword\": \"Test@1234\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/signup"
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"postman@test.com\",\n  \"password\": \"Test@1234\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login",
+            "description": "Copy accessToken from response and set as collection variable 'token'"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Contacts",
+      "item": [
+        {
+          "name": "Create Contact",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Customer\",\n  \"email\": \"customer@test.com\",\n  \"phone\": \"9999999999\",\n  \"companyName\": \"Test Corp\"\n}"
+            },
+            "url": "{{baseUrl}}/contacts"
+          }
+        },
+        {
+          "name": "List Contacts",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/contacts"
+          }
+        },
+        {
+          "name": "Get Contact by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/contacts/1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Products",
+      "item": [
+        {
+          "name": "Create Product 1",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Cloud Storage\",\n  \"productType\": \"SERVICE\",\n  \"salesPrice\": 1000,\n  \"costPrice\": 500\n}"
+            },
+            "url": "{{baseUrl}}/products"
+          }
+        },
+        {
+          "name": "Create Product 2",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Email Hosting\",\n  \"productType\": \"SERVICE\",\n  \"salesPrice\": 500,\n  \"costPrice\": 200\n}"
+            },
+            "url": "{{baseUrl}}/products"
+          }
+        },
+        {
+          "name": "List Products",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/products"
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Payment Terms",
+      "item": [
+        {
+          "name": "Create Payment Term",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Net 30\",\n  \"dueAfterDays\": 30,\n  \"earlyDiscountPercent\": 2,\n  \"earlyDiscountDays\": 10\n}"
+            },
+            "url": "{{baseUrl}}/payment-terms"
+          }
+        },
+        {
+          "name": "List Payment Terms",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/payment-terms"
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Quotation Templates",
+      "item": [
+        {
+          "name": "Create Quotation Template",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Standard Quotation\",\n  \"content\": \"Thank you for your business.\"\n}"
+            },
+            "url": "{{baseUrl}}/quotation-templates"
+          }
+        },
+        {
+          "name": "List Quotation Templates",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/quotation-templates"
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Recurring Plans",
+      "item": [
+        {
+          "name": "Create Recurring Plan",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Pro Monthly Plan\",\n  \"minQuantity\": 1,\n  \"pausable\": true,\n  \"renewable\": true,\n  \"closable\": true,\n  \"autoClose\": true,\n  \"autoCloseValidityDays\": 15,\n  \"prices\": [\n    {\n      \"price\": 2000,\n      \"billingPeriodValue\": 1,\n      \"billingPeriodUnit\": \"MONTH\",\n      \"isDefault\": true\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/recurring-plans"
+          }
+        },
+        {
+          "name": "List Recurring Plans",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/recurring-plans"
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Subscriptions",
+      "item": [
+        {
+          "name": "Create Subscription",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contactId\": 1,\n  \"recurringPlanId\": 1,\n  \"lines\": [\n    { \"productId\": 1, \"quantity\": 2, \"unitPrice\": 1000 },\n    { \"productId\": 2, \"quantity\": 1, \"unitPrice\": 500 }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/subscriptions"
+          }
+        },
+        {
+          "name": "List Subscriptions",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/subscriptions"
+          }
+        },
+        {
+          "name": "Get Subscription by Number",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/subscriptions/by-number/Sub001"
+          }
+        },
+        {
+          "name": "Send Quotation",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/subscriptions/1/send"
+          }
+        },
+        {
+          "name": "Confirm Subscription",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/subscriptions/1/confirm"
+          }
+        },
+        {
+          "name": "Create Invoice from Subscription",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/subscriptions/1/invoices"
+          }
+        },
+        {
+          "name": "Pause Subscription",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/subscriptions/1/pause"
+          }
+        },
+        {
+          "name": "Resume Subscription",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/subscriptions/1/resume"
+          }
+        },
+        {
+          "name": "Upsell",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lines\": [\n    { \"productId\": 2, \"quantity\": 1, \"unitPrice\": 500 }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/subscriptions/1/upsell"
+          }
+        },
+        {
+          "name": "Renew Subscription",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/subscriptions/1/renew"
+          }
+        },
+        {
+          "name": "Close Subscription",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/subscriptions/1/close"
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Invoices",
+      "item": [
+        {
+          "name": "List Invoices",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/invoices"
+          }
+        },
+        {
+          "name": "Get Invoice by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/invoices/1"
+          }
+        },
+        {
+          "name": "Confirm Invoice",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/invoices/1/confirm"
+          }
+        },
+        {
+          "name": "Mark Invoice Paid",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/invoices/1/pay"
+          }
+        }
+      ]
+    }
+  ]
+}

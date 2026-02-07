@@ -28,7 +28,20 @@ class UpsellLineDto {
   @IsOptional()
   @IsNumber()
   @Min(0)
+  discountFixed?: number;
+
+  @IsOptional()
+  @IsInt()
+  discountId?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
   taxPercent?: number;
+
+  @IsOptional()
+  @IsInt()
+  taxId?: number;
 }
 
 export class UpsellSubscriptionDto {

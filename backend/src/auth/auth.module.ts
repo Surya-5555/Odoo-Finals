@@ -10,14 +10,14 @@ import { PassportModule } from '@nestjs/passport';
 import { AdminSeedService } from './seed/admin-seed.service';
 
 @Module({
-  imports : [
+  imports: [
     PassportModule,
     JwtModule.registerAsync({
-      imports : [ConfigModule],
-      inject : [ConfigService], // Can be able to read the variables from .env
-      useFactory : (config : ConfigService) => ({ 
-        secret : config.get('JWT_SECRET'),
-        signOptions : { expiresIn : config.get('JWT_EXPIRES_IN')},
+      imports: [ConfigModule],
+      inject: [ConfigService], // Can be able to read the variables from .env
+      useFactory: (config: ConfigService) => ({
+        secret: config.get('JWT_SECRET'),
+        signOptions: { expiresIn: config.get('JWT_EXPIRES_IN') },
       }),
     }),
     ThrottlerModule.forRoot([
@@ -26,11 +26,9 @@ import { AdminSeedService } from './seed/admin-seed.service';
         limit: 5, // 5 requests per minute
       },
     ]),
-  ],  
+  ],
 
   controllers: [AuthController], // Handles HTTP requests
-  providers: [AuthService, PrismaService, JwtStrategy, AdminSeedService] // Shared functionality
-  
+  providers: [AuthService, PrismaService, JwtStrategy, AdminSeedService], // Shared functionality
 })
-
 export class AuthModule {}

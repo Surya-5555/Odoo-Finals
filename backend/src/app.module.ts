@@ -13,12 +13,18 @@ import { ProductModule } from './product/product.module';
 import { InvoiceModule } from './invoice/invoice.module';
 import { PaymentTermModule } from './payment-term/payment-term.module';
 import { QuotationTemplateModule } from './quotation-template/quotation-template.module';
+import { DiscountModule } from './discount/discount.module';
+import { TaxModule } from './tax/tax.module';
+import { PaymentModule } from './payment/payment.module';
+import { ReportModule } from './report/report.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    ScheduleModule.forRoot(),
     AuthModule,
     RecurringPlanModule,
     SubscriptionModule,
@@ -27,6 +33,10 @@ import { QuotationTemplateModule } from './quotation-template/quotation-template
     InvoiceModule,
     PaymentTermModule,
     QuotationTemplateModule,
+    DiscountModule,
+    TaxModule,
+    PaymentModule,
+    ReportModule,
   ],
   controllers: [AppController],
   providers: [

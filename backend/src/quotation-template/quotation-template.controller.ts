@@ -8,10 +8,13 @@ import {
   Delete,
   ParseIntPipe,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { QuotationTemplateService } from './quotation-template.service';
 import { CreateQuotationTemplateDto } from './dto/create-quotation-template.dto';
 import { UpdateQuotationTemplateDto } from './dto/update-quotation-template.dto';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesGuard } from '../auth/guard/roles.guard';
 
 @Controller('quotation-templates')
 export class QuotationTemplateController {
@@ -19,16 +22,15 @@ export class QuotationTemplateController {
     private readonly quotationTemplateService: QuotationTemplateService,
   ) {}
 
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
   @Post()
   create(@Body() createQuotationTemplateDto: CreateQuotationTemplateDto) {
     return this.quotationTemplateService.create(createQuotationTemplateDto);
   }
 
   @Get()
-  findAll(
-    @Query('skip') skip?: string,
-    @Query('take') take?: string,
-  ) {
+  findAll(@Query('skip') skip?: string, @Query('take') take?: string) {
     return this.quotationTemplateService.findAll({
       skip: skip ? parseInt(skip, 10) : undefined,
       take: take ? parseInt(take, 10) : undefined,
@@ -40,6 +42,8 @@ export class QuotationTemplateController {
     return this.quotationTemplateService.findOne(id);
   }
 
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
   @Patch(':id')
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -48,6 +52,8 @@ export class QuotationTemplateController {
     return this.quotationTemplateService.update(id, updateQuotationTemplateDto);
   }
 
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.quotationTemplateService.remove(id);

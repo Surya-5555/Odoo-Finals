@@ -8,6 +8,10 @@ import { Prisma } from '@prisma/client';
 export class ContactService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private isPortal(user?: { id: number; role: string }) {
+    return user?.role === 'PORTAL';
+  }
+
   async create(dto: CreateContactDto) {
     return this.prisma.contact.create({
       data: {
@@ -25,13 +29,18 @@ export class ContactService {
     skip?: number;
     take?: number;
     where?: Prisma.ContactWhereInput;
+    requestingUser?: { id: number; role: string };
   }) {
-    const { skip, take, where } = params ?? {};
+    const { skip, take, where, requestingUser } = params ?? {};
+    const scopedWhere: Prisma.ContactWhereInput = { ...(where ?? {}) };
+    if (requestingUser?.role === 'PORTAL') {
+      scopedWhere.userId = requestingUser.id;
+    }
     const [data, total] = await Promise.all([
       this.prisma.contact.findMany({
         skip,
         take: take ?? 50,
-        where,
+        where: scopedWhere,
         orderBy: { name: 'asc' },
         include: {
           _count: {
@@ -43,7 +52,7 @@ export class ContactService {
           },
         },
       }),
-      this.prisma.contact.count({ where }),
+      this.prisma.contact.count({ where: scopedWhere }),
     ]);
     return {
       data: data.map((c) => ({
@@ -54,9 +63,14 @@ export class ContactService {
     };
   }
 
-  async findOne(id: number) {
-    const contact = await this.prisma.contact.findUnique({
-      where: { id },
+  async findOne(id: number, requestingUser?: { id: number; role: string }) {
+    const contact = await this.prisma.contact.findFirst({
+      where: {
+        id,
+        ...(requestingUser?.role === 'PORTAL'
+          ? { userId: requestingUser.id }
+          : {}),
+      },
       include: {
         _count: {
           select: {

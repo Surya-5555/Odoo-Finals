@@ -43,11 +43,25 @@ export class AdminSeedService implements OnModuleInit {
     });
 
     if (existingByEmail) {
-      // Safer default: do not change passwords implicitly.
-      // If you want to promote this user, do it explicitly (DB update / admin tooling).
+      // If a user already exists with ADMIN_EMAIL, we cannot safely print or reset a password.
+      // However, in non-production environments it's a common dev workflow to sign up first,
+      // then later decide that same account should be admin.
+      if (process.env.NODE_ENV !== 'production') {
+        await this.prisma.user.update({
+          where: { email },
+          data: { role: 'ADMIN' },
+        });
+        this.logger.warn(
+          `Promoted existing user to ADMIN for local/dev: ${email}. ` +
+            'Password unchanged (no password will be printed).',
+        );
+        return;
+      }
+
+      // Production-safe default: do not change roles/credentials implicitly.
       this.logger.error(
         `Admin bootstrap blocked: user with email ${email} already exists. ` +
-          'Refusing to overwrite credentials. Choose a different ADMIN_EMAIL or promote manually.',
+          'Refusing to overwrite credentials or role in production. Choose a different ADMIN_EMAIL or promote manually.',
       );
       return;
     }
@@ -79,7 +93,7 @@ export class AdminSeedService implements OnModuleInit {
     // Print ONLY once, only when we successfully created the admin.
     // WARNING: In real enterprise setups, prefer writing this secret to a secure secret manager
     // or a one-time delivery channel instead of logs.
-    // eslint-disable-next-line no-console
+
     console.log(
       `\n=== ADMIN BOOTSTRAP PASSWORD (DISPLAYED ONCE) ===\n` +
         `email: ${email}\n` +

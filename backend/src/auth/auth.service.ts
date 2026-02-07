@@ -15,6 +15,8 @@ import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { randomBytes, createHash } from 'crypto';
 
+type JwtUser = { id: number; email: string; role: string };
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -43,11 +45,23 @@ export class AuthService {
           email: dto.email,
           password: hashedPassword,
           role: 'PORTAL',
+          contact: {
+            create: {
+              name: dto.name,
+              email: dto.email,
+            },
+          },
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          createdAt: true,
         },
       });
 
-      const { password, ...result } = user;
-      return result;
+      return user;
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;
@@ -76,12 +90,18 @@ export class AuthService {
       const accessToken = this.generateAccessToken(user);
       const refreshToken = await this.createRefreshToken(user.id);
 
-      const { password, ...result } = user;
+      const safeUser = {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        createdAt: user.createdAt,
+      };
 
       return {
         accessToken,
         refreshToken,
-        user: result,
+        user: safeUser,
       };
     } catch (error) {
       if (error instanceof UnauthorizedException) {
@@ -92,12 +112,15 @@ export class AuthService {
   }
 
   // func to generate access token (jwt)
-  private generateAccessToken(user: any) {
+  private generateAccessToken(user: JwtUser): string {
     const payload = { sub: user.id, email: user.email, role: user.role };
     return this.jwtService.sign(payload, { expiresIn: '20m' });
   }
 
-  async createInternalUser(requestingUser: { id: number; role: string }, dto: CreateInternalUserDto) {
+  async createInternalUser(
+    requestingUser: { id: number; role: string },
+    dto: CreateInternalUserDto,
+  ) {
     if (requestingUser.role !== 'ADMIN') {
       throw new ForbiddenException('Only admin can create internal user');
     }
@@ -119,10 +142,16 @@ export class AuthService {
         password: hashedPassword,
         role: 'INTERNAL',
       },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        createdAt: true,
+      },
     });
 
-    const { password, ...result } = user;
-    return result;
+    return user;
   }
 
   // func to create refresh token
@@ -148,7 +177,7 @@ export class AuthService {
   async refresh(refreshToken: string) {
     try {
       const tokenHash = createHash('sha256').update(refreshToken).digest('hex');
-      
+
       const tokenRecord = await this.prisma.refreshToken.findFirst({
         where: {
           token: tokenHash,
@@ -183,7 +212,7 @@ export class AuthService {
   async logout(refreshToken: string) {
     try {
       const tokenHash = createHash('sha256').update(refreshToken).digest('hex');
-      
+
       const tokenRecord = await this.prisma.refreshToken.findFirst({
         where: {
           token: tokenHash,

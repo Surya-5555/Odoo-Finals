@@ -1,4 +1,8 @@
-import { ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ExecutionContext,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
@@ -10,13 +14,10 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   }
 
   canActivate(context: ExecutionContext) {
-    const isPublic = this.reflector.getAllAndOverride<boolean>(
-      IS_PUBLIC_KEY,
-      [
-        context.getHandler(),
-        context.getClass(),
-      ],
-    );
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
 
     if (isPublic) {
       return true;
@@ -25,15 +26,31 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     return super.canActivate(context);
   }
 
-  handleRequest(err: any, user: any, info?: any) {
+  handleRequest<TUser = any>(
+    err: unknown,
+    user: TUser | null | false,
+    info: unknown,
+    _context: ExecutionContext,
+    _status?: unknown,
+  ): TUser {
+    void _context;
+    void _status;
     if (err) {
-      throw err;
+      if (err instanceof Error) throw err;
+      throw new UnauthorizedException('Authentication error');
     }
 
     if (!user) {
       // Keep it generic for production safety, but more helpful than the default "Unauthorized".
+      const infoName =
+        typeof info === 'object' &&
+        info !== null &&
+        'name' in info &&
+        typeof (info as { name?: unknown }).name === 'string'
+          ? (info as { name: string }).name
+          : undefined;
       const message =
-        info?.name === 'TokenExpiredError'
+        infoName === 'TokenExpiredError'
           ? 'Access token expired'
           : 'Missing or invalid access token';
       throw new UnauthorizedException(message);

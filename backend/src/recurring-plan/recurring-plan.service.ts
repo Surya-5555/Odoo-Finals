@@ -6,7 +6,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateRecurringPlanDto } from './dto/create-recurring-plan.dto';
 import { UpdateRecurringPlanDto } from './dto/update-recurring-plan.dto';
-import { BillingPeriodUnit, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class RecurringPlanService {
@@ -30,7 +30,7 @@ export class RecurringPlanService {
         create: prices.map((p) => ({
           price: new Prisma.Decimal(p.price),
           billingPeriodValue: p.billingPeriodValue,
-          billingPeriodUnit: p.billingPeriodUnit as BillingPeriodUnit,
+          billingPeriodUnit: p.billingPeriodUnit,
           isDefault: p.isDefault ?? false,
         })),
       };
@@ -95,7 +95,9 @@ export class RecurringPlanService {
       ...(planData.endDate !== undefined && {
         endDate: new Date(planData.endDate),
       }),
-      ...(planData.autoClose !== undefined && { autoClose: planData.autoClose }),
+      ...(planData.autoClose !== undefined && {
+        autoClose: planData.autoClose,
+      }),
       ...(planData.autoCloseValidityDays !== undefined && {
         autoCloseValidityDays: planData.autoCloseValidityDays,
       }),
@@ -114,7 +116,7 @@ export class RecurringPlanService {
           create: prices.map((p) => ({
             price: new Prisma.Decimal(p.price),
             billingPeriodValue: p.billingPeriodValue,
-            billingPeriodUnit: p.billingPeriodUnit as BillingPeriodUnit,
+            billingPeriodUnit: p.billingPeriodUnit,
             isDefault: p.isDefault ?? false,
           })),
         };

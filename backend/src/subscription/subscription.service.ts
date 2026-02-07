@@ -36,11 +36,124 @@ export class SubscriptionService {
     unitPrice: number,
     discountPercent?: number,
     taxPercent?: number,
+    discountFixed?: number,
   ): number {
     let amount = quantity * unitPrice;
+    if (discountFixed) amount -= discountFixed;
     if (discountPercent) amount *= 1 - discountPercent / 100;
+    if (amount < 0) amount = 0;
     if (taxPercent) amount *= 1 + taxPercent / 100;
     return Math.round(amount * 100) / 100;
+  }
+
+  private async resolveDiscount(input: {
+    discountId?: number;
+    discountPercent?: number;
+    discountFixed?: number;
+    quantity: number;
+    unitPrice: number;
+    productId: number;
+  }): Promise<{
+    discountId?: number;
+    discountPercent?: number;
+    discountFixed?: number;
+    shouldIncrementUsage: boolean;
+  }> {
+    if (!input.discountId) {
+      return {
+        discountId: undefined,
+        discountPercent: input.discountPercent,
+        discountFixed: input.discountFixed,
+        shouldIncrementUsage: false,
+      };
+    }
+
+    const discount = await this.prisma.discount.findUnique({
+      where: { id: input.discountId },
+    });
+    if (!discount || !discount.active) {
+      throw new BadRequestException('Invalid or inactive discount');
+    }
+
+    const now = new Date();
+    if (discount.startDate && now < discount.startDate) {
+      throw new BadRequestException('Discount is not active yet');
+    }
+    if (discount.endDate && now > discount.endDate) {
+      throw new BadRequestException('Discount has expired');
+    }
+    if (
+      discount.limitUsage != null &&
+      discount.usageCount >= discount.limitUsage
+    ) {
+      throw new BadRequestException('Discount usage limit reached');
+    }
+    if (
+      discount.appliesTo === 'PRODUCT' &&
+      discount.productId != null &&
+      discount.productId !== input.productId
+    ) {
+      throw new BadRequestException('Discount does not apply to this product');
+    }
+
+    const base = input.quantity * input.unitPrice;
+    if (
+      discount.minQuantity != null &&
+      input.quantity < Number(discount.minQuantity)
+    ) {
+      throw new BadRequestException('Discount minimum quantity not met');
+    }
+    if (discount.minPurchase != null && base < Number(discount.minPurchase)) {
+      throw new BadRequestException('Discount minimum purchase not met');
+    }
+
+    if (discount.type === 'PERCENTAGE') {
+      const percent =
+        discount.percent != null ? Number(discount.percent) : null;
+      if (percent == null) {
+        throw new BadRequestException('Discount percentage not configured');
+      }
+      return {
+        discountId: discount.id,
+        discountPercent: percent,
+        discountFixed: undefined,
+        shouldIncrementUsage: true,
+      };
+    }
+
+    const fixed = discount.fixed != null ? Number(discount.fixed) : null;
+    if (fixed == null) {
+      throw new BadRequestException('Discount fixed amount not configured');
+    }
+    return {
+      discountId: discount.id,
+      discountPercent: undefined,
+      discountFixed: fixed,
+      shouldIncrementUsage: true,
+    };
+  }
+
+  private async resolveTax(input: {
+    taxId?: number;
+    taxPercent?: number;
+  }): Promise<{ taxId?: number; taxPercent?: number }> {
+    if (!input.taxId) {
+      return { taxId: undefined, taxPercent: input.taxPercent };
+    }
+    const tax = await this.prisma.tax.findUnique({
+      where: { id: input.taxId },
+    });
+    if (!tax || !tax.active) {
+      throw new BadRequestException('Invalid or inactive tax');
+    }
+    const now = new Date();
+    if (tax.startDate && now < tax.startDate) {
+      throw new BadRequestException('Tax is not active yet');
+    }
+    if (tax.endDate && now > tax.endDate) {
+      throw new BadRequestException('Tax has expired');
+    }
+    return { taxId: tax.id, taxPercent: Number(tax.percentage) };
   }
 
   async create(dto: CreateSubscriptionDto) {
@@ -58,56 +171,110 @@ export class SubscriptionService {
     const lines = dto.lines ?? [];
     const lineCreates: Prisma.SubscriptionLineCreateWithoutSubscriptionInput[] =
       [];
+    const discountIdsToIncrement: number[] = [];
     for (const line of lines) {
       const product = await this.prisma.product.findUnique({
         where: { id: line.productId },
       });
-      if (!product) throw new NotFoundException(`Product ${line.productId} not found`);
+      if (!product)
+        throw new NotFoundException(`Product ${line.productId} not found`);
+
+      const resolvedDiscount = await this.resolveDiscount({
+        discountId: line.discountId,
+        discountPercent: line.discountPercent,
+        discountFixed: line.discountFixed,
+        quantity: line.quantity,
+        unitPrice: line.unitPrice,
+        productId: line.productId,
+      });
+      const resolvedTax = await this.resolveTax({
+        taxId: line.taxId,
+        taxPercent: line.taxPercent,
+      });
+
       const amount = this.computeLineAmount(
         line.quantity,
         line.unitPrice,
-        line.discountPercent,
-        line.taxPercent,
+        resolvedDiscount.discountPercent,
+        resolvedTax.taxPercent,
+        resolvedDiscount.discountFixed,
       );
+      if (
+        resolvedDiscount.shouldIncrementUsage &&
+        resolvedDiscount.discountId
+      ) {
+        discountIdsToIncrement.push(resolvedDiscount.discountId);
+      }
       lineCreates.push({
         product: { connect: { id: line.productId } },
         quantity: new Prisma.Decimal(line.quantity),
         unitPrice: new Prisma.Decimal(line.unitPrice),
-        discountPercent: line.discountPercent
-          ? new Prisma.Decimal(line.discountPercent)
-          : null,
-        taxPercent: line.taxPercent ? new Prisma.Decimal(line.taxPercent) : null,
+        discountPercent:
+          resolvedDiscount.discountPercent != null
+            ? new Prisma.Decimal(resolvedDiscount.discountPercent)
+            : null,
+        discountFixed:
+          resolvedDiscount.discountFixed != null
+            ? new Prisma.Decimal(resolvedDiscount.discountFixed)
+            : null,
+        discount:
+          resolvedDiscount.discountId != null
+            ? { connect: { id: resolvedDiscount.discountId } }
+            : undefined,
+        taxPercent:
+          resolvedTax.taxPercent != null
+            ? new Prisma.Decimal(resolvedTax.taxPercent)
+            : null,
+        tax:
+          resolvedTax.taxId != null
+            ? { connect: { id: resolvedTax.taxId } }
+            : undefined,
         amount: new Prisma.Decimal(amount),
       });
     }
 
-    const subscription = await this.prisma.subscription.create({
-      data: {
-        number,
-        contactId: dto.contactId,
-        recurringPlanId: dto.recurringPlanId,
-        state: 'DRAFT',
-        expirationDate: dto.expirationDate
-          ? new Date(dto.expirationDate)
-          : undefined,
-        quotationTemplateId: dto.quotationTemplateId ?? undefined,
-        orderDate: dto.orderDate ? new Date(dto.orderDate) : undefined,
-        paymentTermId: dto.paymentTermId ?? undefined,
-        salespersonId: dto.salespersonId ?? undefined,
-        lines: lineCreates.length ? { create: lineCreates } : undefined,
-      },
-      include: {
-        contact: true,
-        recurringPlan: { include: { prices: true } },
-        lines: { include: { product: true } },
-        paymentTerm: true,
-      },
-    });
+    const [subscription] = await this.prisma.$transaction([
+      this.prisma.subscription.create({
+        data: {
+          number,
+          contactId: dto.contactId,
+          recurringPlanId: dto.recurringPlanId,
+          state: 'DRAFT',
+          expirationDate: dto.expirationDate
+            ? new Date(dto.expirationDate)
+            : undefined,
+          quotationTemplateId: dto.quotationTemplateId ?? undefined,
+          orderDate: dto.orderDate ? new Date(dto.orderDate) : undefined,
+          paymentTermId: dto.paymentTermId ?? undefined,
+          salespersonId: dto.salespersonId ?? undefined,
+          lines: lineCreates.length ? { create: lineCreates } : undefined,
+        },
+        include: {
+          contact: true,
+          recurringPlan: { include: { prices: true } },
+          lines: { include: { product: true } },
+          paymentTerm: true,
+        },
+      }),
+      ...discountIdsToIncrement.map((id) =>
+        this.prisma.discount.update({
+          where: { id },
+          data: { usageCount: { increment: 1 } },
+        }),
+      ),
+    ]);
     return this.serializeSubscription(subscription);
   }
 
   private serializeSubscription(sub: {
-    lines: { product: unknown; quantity: unknown; unitPrice: unknown; amount: unknown; discountPercent: unknown; taxPercent: unknown }[];
+    lines: {
+      product: unknown;
+      quantity: unknown;
+      unitPrice: unknown;
+      amount: unknown;
+      discountPercent: unknown;
+      taxPercent: unknown;
+    }[];
     recurringPlan: { prices: { price: unknown }[] };
     [k: string]: unknown;
   }) {
@@ -128,7 +295,11 @@ export class SubscriptionService {
         unitPrice: l.unitPrice != null ? Number(l.unitPrice) : l.unitPrice,
         amount: l.amount != null ? Number(l.amount) : l.amount,
         discountPercent:
-          l.discountPercent != null ? Number(l.discountPercent) : l.discountPercent,
+          l.discountPercent != null
+            ? Number(l.discountPercent)
+            : l.discountPercent,
+        discountFixed:
+          l.discountFixed != null ? Number(l.discountFixed) : l.discountFixed,
         taxPercent: l.taxPercent != null ? Number(l.taxPercent) : l.taxPercent,
       }));
     return rec;
@@ -139,10 +310,15 @@ export class SubscriptionService {
     take?: number;
     contactId?: number;
     state?: SubscriptionState;
+    requestingUser?: { id: number; role: string };
   }) {
-    const { skip, take, contactId, state } = params ?? {};
+    const { skip, take, contactId, state, requestingUser } = params ?? {};
     const where: Prisma.SubscriptionWhereInput = {};
-    if (contactId != null) where.contactId = contactId;
+    if (requestingUser?.role === 'PORTAL') {
+      where.contact = { userId: requestingUser.id };
+    } else {
+      if (contactId != null) where.contactId = contactId;
+    }
     if (state) where.state = state;
     const [items, total] = await Promise.all([
       this.prisma.subscription.findMany({
@@ -166,8 +342,20 @@ export class SubscriptionService {
   }
 
   async findOne(id: number) {
-    const sub = await this.prisma.subscription.findUnique({
-      where: { id },
+    return this.findOneScoped(id);
+  }
+
+  async findOneScoped(
+    id: number,
+    requestingUser?: { id: number; role: string },
+  ) {
+    const sub = await this.prisma.subscription.findFirst({
+      where: {
+        id,
+        ...(requestingUser?.role === 'PORTAL'
+          ? { contact: { userId: requestingUser.id } }
+          : {}),
+      },
       include: {
         contact: true,
         recurringPlan: { include: { prices: true } },
@@ -181,9 +369,17 @@ export class SubscriptionService {
     return this.serializeSubscription(sub);
   }
 
-  async findByNumber(number: string) {
-    const sub = await this.prisma.subscription.findUnique({
-      where: { number },
+  async findByNumber(
+    number: string,
+    requestingUser?: { id: number; role: string },
+  ) {
+    const sub = await this.prisma.subscription.findFirst({
+      where: {
+        number,
+        ...(requestingUser?.role === 'PORTAL'
+          ? { contact: { userId: requestingUser.id } }
+          : {}),
+      },
       include: {
         contact: true,
         recurringPlan: { include: { prices: true } },
@@ -231,22 +427,49 @@ export class SubscriptionService {
           });
           if (!product)
             throw new NotFoundException(`Product ${line.productId} not found`);
+          const resolvedDiscount = await this.resolveDiscount({
+            discountId: line.discountId,
+            discountPercent: line.discountPercent,
+            discountFixed: line.discountFixed,
+            quantity: line.quantity,
+            unitPrice: line.unitPrice,
+            productId: line.productId,
+          });
+          const resolvedTax = await this.resolveTax({
+            taxId: line.taxId,
+            taxPercent: line.taxPercent,
+          });
           const amount = this.computeLineAmount(
             line.quantity,
             line.unitPrice,
-            line.discountPercent,
-            line.taxPercent,
+            resolvedDiscount.discountPercent,
+            resolvedTax.taxPercent,
+            resolvedDiscount.discountFixed,
           );
           creates.push({
             product: { connect: { id: line.productId } },
             quantity: new Prisma.Decimal(line.quantity),
             unitPrice: new Prisma.Decimal(line.unitPrice),
-            discountPercent: line.discountPercent
-              ? new Prisma.Decimal(line.discountPercent)
-              : null,
-            taxPercent: line.taxPercent
-              ? new Prisma.Decimal(line.taxPercent)
-              : null,
+            discountPercent:
+              resolvedDiscount.discountPercent != null
+                ? new Prisma.Decimal(resolvedDiscount.discountPercent)
+                : null,
+            discountFixed:
+              resolvedDiscount.discountFixed != null
+                ? new Prisma.Decimal(resolvedDiscount.discountFixed)
+                : null,
+            discount:
+              resolvedDiscount.discountId != null
+                ? { connect: { id: resolvedDiscount.discountId } }
+                : undefined,
+            taxPercent:
+              resolvedTax.taxPercent != null
+                ? new Prisma.Decimal(resolvedTax.taxPercent)
+                : null,
+            tax:
+              resolvedTax.taxId != null
+                ? { connect: { id: resolvedTax.taxId } }
+                : undefined,
             amount: new Prisma.Decimal(amount),
           });
         }
@@ -303,12 +526,12 @@ export class SubscriptionService {
     const startDate = sub.orderDate ?? now;
     let nextInvoiceDate: Date | null = null;
     const defaultPrice =
-      await this.prisma.recurringPlanPrice.findFirst({
+      (await this.prisma.recurringPlanPrice.findFirst({
         where: {
           recurringPlanId: sub.recurringPlanId,
           isDefault: true,
         },
-      }) ||
+      })) ||
       (await this.prisma.recurringPlanPrice.findFirst({
         where: { recurringPlanId: sub.recurringPlanId },
       }));
@@ -358,15 +581,16 @@ export class SubscriptionService {
     const number = await this.generateSubscriptionNumber();
     const now = new Date();
     let nextInvoiceDate: Date | null = null;
-    const defaultPrice = await this.prisma.recurringPlanPrice.findFirst({
-      where: {
-        recurringPlanId: plan.id,
-        isDefault: true,
-      },
-    }) ||
-    (await this.prisma.recurringPlanPrice.findFirst({
-      where: { recurringPlanId: plan.id },
-    }));
+    const defaultPrice =
+      (await this.prisma.recurringPlanPrice.findFirst({
+        where: {
+          recurringPlanId: plan.id,
+          isDefault: true,
+        },
+      })) ||
+      (await this.prisma.recurringPlanPrice.findFirst({
+        where: { recurringPlanId: plan.id },
+      }));
     if (defaultPrice) {
       const next = new Date(now);
       if (defaultPrice.billingPeriodUnit === 'MONTH')
@@ -442,7 +666,9 @@ export class SubscriptionService {
     });
     if (!sub) throw new NotFoundException('Subscription not found');
     if (sub.state !== 'CONFIRMED') {
-      throw new BadRequestException('Only confirmed subscriptions can be paused');
+      throw new BadRequestException(
+        'Only confirmed subscriptions can be paused',
+      );
     }
     if (!sub.recurringPlan.pausable) {
       throw new BadRequestException('This plan is not pausable');
@@ -498,7 +724,7 @@ export class SubscriptionService {
   }
 
   async createInvoice(subscriptionId: number) {
-    return this.invoiceService.createFromSubscription(subscriptionId);
+    return this.invoiceService.createInvoiceAndAdvance(subscriptionId);
   }
 
   async upsell(id: number, dto: UpsellSubscriptionDto) {
@@ -526,9 +752,9 @@ export class SubscriptionService {
     const now = new Date();
     let nextInvoiceDate: Date | null = null;
     const defaultPrice =
-      await this.prisma.recurringPlanPrice.findFirst({
+      (await this.prisma.recurringPlanPrice.findFirst({
         where: { recurringPlanId: plan.id, isDefault: true },
-      }) ||
+      })) ||
       (await this.prisma.recurringPlanPrice.findFirst({
         where: { recurringPlanId: plan.id },
       }));
@@ -545,49 +771,96 @@ export class SubscriptionService {
 
     const lineCreates: Prisma.SubscriptionLineCreateWithoutSubscriptionInput[] =
       [];
+    const discountIdsToIncrement: number[] = [];
     for (const line of dto.lines) {
       const product = await this.prisma.product.findUnique({
         where: { id: line.productId },
       });
-      if (!product) throw new NotFoundException(`Product ${line.productId} not found`);
+      if (!product)
+        throw new NotFoundException(`Product ${line.productId} not found`);
+
+      const resolvedDiscount = await this.resolveDiscount({
+        discountId: line.discountId,
+        discountPercent: line.discountPercent,
+        discountFixed: line.discountFixed,
+        quantity: line.quantity,
+        unitPrice: line.unitPrice,
+        productId: line.productId,
+      });
+      const resolvedTax = await this.resolveTax({
+        taxId: line.taxId,
+        taxPercent: line.taxPercent,
+      });
+
       const amount = this.computeLineAmount(
         line.quantity,
         line.unitPrice,
-        line.discountPercent,
-        line.taxPercent,
+        resolvedDiscount.discountPercent,
+        resolvedTax.taxPercent,
+        resolvedDiscount.discountFixed,
       );
+      if (
+        resolvedDiscount.shouldIncrementUsage &&
+        resolvedDiscount.discountId
+      ) {
+        discountIdsToIncrement.push(resolvedDiscount.discountId);
+      }
       lineCreates.push({
         product: { connect: { id: line.productId } },
         quantity: new Prisma.Decimal(line.quantity),
         unitPrice: new Prisma.Decimal(line.unitPrice),
-        discountPercent: line.discountPercent
-          ? new Prisma.Decimal(line.discountPercent)
-          : null,
-        taxPercent: line.taxPercent ? new Prisma.Decimal(line.taxPercent) : null,
+        discountPercent:
+          resolvedDiscount.discountPercent != null
+            ? new Prisma.Decimal(resolvedDiscount.discountPercent)
+            : null,
+        discountFixed:
+          resolvedDiscount.discountFixed != null
+            ? new Prisma.Decimal(resolvedDiscount.discountFixed)
+            : null,
+        discount:
+          resolvedDiscount.discountId != null
+            ? { connect: { id: resolvedDiscount.discountId } }
+            : undefined,
+        taxPercent:
+          resolvedTax.taxPercent != null
+            ? new Prisma.Decimal(resolvedTax.taxPercent)
+            : null,
+        tax:
+          resolvedTax.taxId != null
+            ? { connect: { id: resolvedTax.taxId } }
+            : undefined,
         amount: new Prisma.Decimal(amount),
       });
     }
 
-    const newSub = await this.prisma.subscription.create({
-      data: {
-        number,
-        contactId: sub.contactId,
-        recurringPlanId: planId,
-        state: 'CONFIRMED',
-        orderDate: now,
-        startDate: now,
-        nextInvoiceDate,
-        paymentTermId: sub.paymentTermId,
-        salespersonId: sub.salespersonId,
-        lines: { create: lineCreates },
-      },
-      include: {
-        contact: true,
-        recurringPlan: { include: { prices: true } },
-        lines: { include: { product: true } },
-        paymentTerm: true,
-      },
-    });
+    const [newSub] = await this.prisma.$transaction([
+      this.prisma.subscription.create({
+        data: {
+          number,
+          contactId: sub.contactId,
+          recurringPlanId: planId,
+          state: 'CONFIRMED',
+          orderDate: now,
+          startDate: now,
+          nextInvoiceDate,
+          paymentTermId: sub.paymentTermId,
+          salespersonId: sub.salespersonId,
+          lines: { create: lineCreates },
+        },
+        include: {
+          contact: true,
+          recurringPlan: { include: { prices: true } },
+          lines: { include: { product: true } },
+          paymentTerm: true,
+        },
+      }),
+      ...discountIdsToIncrement.map((id) =>
+        this.prisma.discount.update({
+          where: { id },
+          data: { usageCount: { increment: 1 } },
+        }),
+      ),
+    ]);
     return this.serializeSubscription(newSub);
   }
 }

@@ -10,6 +10,41 @@ import { InvoiceState, Prisma } from '@prisma/client';
 export class InvoiceService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private addBillingPeriod(
+    from: Date,
+    unit: 'DAY' | 'MONTH' | 'YEAR',
+    value: number,
+  ): Date {
+    const next = new Date(from);
+    if (unit === 'MONTH') next.setMonth(next.getMonth() + value);
+    else if (unit === 'YEAR') next.setFullYear(next.getFullYear() + value);
+    else next.setDate(next.getDate() + value);
+    return next;
+  }
+
+  private async computeNextInvoiceDate(
+    client: Prisma.TransactionClient,
+    recurringPlanId: number,
+    baseDate: Date,
+  ): Promise<Date | null> {
+    const defaultPrice =
+      (await client.recurringPlanPrice.findFirst({
+        where: { recurringPlanId, isDefault: true },
+        select: { billingPeriodUnit: true, billingPeriodValue: true },
+      })) ||
+      (await client.recurringPlanPrice.findFirst({
+        where: { recurringPlanId },
+        select: { billingPeriodUnit: true, billingPeriodValue: true },
+      }));
+
+    if (!defaultPrice) return null;
+    return this.addBillingPeriod(
+      baseDate,
+      defaultPrice.billingPeriodUnit,
+      defaultPrice.billingPeriodValue,
+    );
+  }
+
   private async generateInvoiceNumber(): Promise<string> {
     const prefix = 'INV';
     const last = await this.prisma.invoice.findFirst({
@@ -23,8 +58,12 @@ export class InvoiceService {
     return `${prefix}${String(nextNum).padStart(3, '0')}`;
   }
 
-  async createFromSubscription(subscriptionId: number) {
-    const sub = await this.prisma.subscription.findUnique({
+  async createFromSubscription(
+    subscriptionId: number,
+    tx?: Prisma.TransactionClient,
+  ) {
+    const client = tx ?? this.prisma;
+    const sub = await client.subscription.findUnique({
       where: { id: subscriptionId },
       include: {
         lines: { include: { product: true } },
@@ -53,7 +92,7 @@ export class InvoiceService {
       dueDate.setDate(dueDate.getDate() + 30);
     }
 
-    const invoice = await this.prisma.invoice.create({
+    const invoice = await client.invoice.create({
       data: {
         number,
         subscriptionId: sub.id,
@@ -67,7 +106,11 @@ export class InvoiceService {
             description: l.product.name,
             quantity: l.quantity,
             unitPrice: l.unitPrice,
+            discountPercent: l.discountPercent,
+            discountFixed: l.discountFixed,
+            discountId: l.discountId,
             taxPercent: l.taxPercent,
+            taxId: l.taxId,
             amount: l.amount,
           })),
         },
@@ -81,8 +124,80 @@ export class InvoiceService {
     return this.serializeInvoice(invoice);
   }
 
+  async createInvoiceAndAdvance(subscriptionId: number) {
+    return this.prisma.$transaction(async (tx) => {
+      const sub = await tx.subscription.findUnique({
+        where: { id: subscriptionId },
+        select: {
+          id: true,
+          state: true,
+          nextInvoiceDate: true,
+          recurringPlanId: true,
+        },
+      });
+      if (!sub) throw new NotFoundException('Subscription not found');
+
+      const invoice = await this.createFromSubscription(subscriptionId, tx);
+
+      const baseDate = sub.nextInvoiceDate ?? new Date();
+      const nextInvoiceDate = await this.computeNextInvoiceDate(
+        tx,
+        sub.recurringPlanId,
+        baseDate,
+      );
+
+      await tx.subscription.update({
+        where: { id: subscriptionId },
+        data: { nextInvoiceDate },
+      });
+
+      return invoice;
+    });
+  }
+
+  async createDueInvoiceAndAdvance(subscriptionId: number) {
+    return this.prisma.$transaction(async (tx) => {
+      const now = new Date();
+      const sub = await tx.subscription.findUnique({
+        where: { id: subscriptionId },
+        select: {
+          id: true,
+          state: true,
+          nextInvoiceDate: true,
+          recurringPlanId: true,
+        },
+      });
+      if (!sub) throw new NotFoundException('Subscription not found');
+      if (sub.state !== 'CONFIRMED') {
+        throw new BadRequestException('Only confirmed subscriptions are due');
+      }
+      if (!sub.nextInvoiceDate || sub.nextInvoiceDate > now) {
+        throw new BadRequestException('Subscription is not due for invoicing');
+      }
+
+      const invoice = await this.createFromSubscription(subscriptionId, tx);
+      const nextInvoiceDate = await this.computeNextInvoiceDate(
+        tx,
+        sub.recurringPlanId,
+        sub.nextInvoiceDate,
+      );
+      await tx.subscription.update({
+        where: { id: subscriptionId },
+        data: { nextInvoiceDate },
+      });
+      return invoice;
+    });
+  }
+
   private serializeInvoice(inv: {
-    lines: { amount: unknown; unitPrice: unknown; quantity: unknown; taxPercent: unknown }[];
+    lines: {
+      amount: unknown;
+      unitPrice: unknown;
+      quantity: unknown;
+      taxPercent: unknown;
+      discountPercent: unknown;
+      discountFixed: unknown;
+    }[];
     [k: string]: unknown;
   }) {
     const out = { ...inv } as Record<string, unknown>;
@@ -93,6 +208,12 @@ export class InvoiceService {
         unitPrice: l.unitPrice != null ? Number(l.unitPrice) : l.unitPrice,
         quantity: l.quantity != null ? Number(l.quantity) : l.quantity,
         taxPercent: l.taxPercent != null ? Number(l.taxPercent) : l.taxPercent,
+        discountPercent:
+          l.discountPercent != null
+            ? Number(l.discountPercent)
+            : l.discountPercent,
+        discountFixed:
+          l.discountFixed != null ? Number(l.discountFixed) : l.discountFixed,
       }));
     return out;
   }
@@ -103,18 +224,28 @@ export class InvoiceService {
     subscriptionId?: number;
     contactId?: number;
     state?: InvoiceState;
+    requestingUser?: { id: number; role: string };
   }) {
-    const { skip, take, subscriptionId, contactId, state } = params ?? {};
+    const { skip, take, subscriptionId, contactId, state, requestingUser } =
+      params ?? {};
     const where: Prisma.InvoiceWhereInput = {};
-    if (subscriptionId != null) where.subscriptionId = subscriptionId;
-    if (contactId != null) where.contactId = contactId;
+    if (requestingUser?.role === 'PORTAL') {
+      where.contact = { userId: requestingUser.id };
+    } else {
+      if (subscriptionId != null) where.subscriptionId = subscriptionId;
+      if (contactId != null) where.contactId = contactId;
+    }
     if (state) where.state = state;
     const [data, total] = await Promise.all([
       this.prisma.invoice.findMany({
         skip,
         take: take ?? 50,
         where,
-        include: { contact: true, subscription: true, lines: { include: { product: true } } },
+        include: {
+          contact: true,
+          subscription: true,
+          lines: { include: { product: true } },
+        },
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.invoice.count({ where }),
@@ -123,9 +254,25 @@ export class InvoiceService {
   }
 
   async findOne(id: number) {
-    const inv = await this.prisma.invoice.findUnique({
-      where: { id },
-      include: { contact: true, subscription: true, lines: { include: { product: true } } },
+    return this.findOneScoped(id);
+  }
+
+  async findOneScoped(
+    id: number,
+    requestingUser?: { id: number; role: string },
+  ) {
+    const inv = await this.prisma.invoice.findFirst({
+      where: {
+        id,
+        ...(requestingUser?.role === 'PORTAL'
+          ? { contact: { userId: requestingUser.id } }
+          : {}),
+      },
+      include: {
+        contact: true,
+        subscription: true,
+        lines: { include: { product: true } },
+      },
     });
     if (!inv) throw new NotFoundException('Invoice not found');
     return this.serializeInvoice(inv);
@@ -140,7 +287,11 @@ export class InvoiceService {
     const updated = await this.prisma.invoice.update({
       where: { id },
       data: { state: 'CONFIRMED' },
-      include: { contact: true, subscription: true, lines: { include: { product: true } } },
+      include: {
+        contact: true,
+        subscription: true,
+        lines: { include: { product: true } },
+      },
     });
     return this.serializeInvoice(updated);
   }
@@ -149,12 +300,39 @@ export class InvoiceService {
     const inv = await this.prisma.invoice.findUnique({ where: { id } });
     if (!inv) throw new NotFoundException('Invoice not found');
     if (inv.state !== 'CONFIRMED') {
-      throw new BadRequestException('Only confirmed invoices can be marked paid');
+      throw new BadRequestException(
+        'Only confirmed invoices can be marked paid',
+      );
     }
     const updated = await this.prisma.invoice.update({
       where: { id },
       data: { state: 'PAID' },
-      include: { contact: true, subscription: true, lines: { include: { product: true } } },
+      include: {
+        contact: true,
+        subscription: true,
+        lines: { include: { product: true } },
+      },
+    });
+    return this.serializeInvoice(updated);
+  }
+
+  async cancel(id: number) {
+    const inv = await this.prisma.invoice.findUnique({ where: { id } });
+    if (!inv) throw new NotFoundException('Invoice not found');
+    if (inv.state === 'PAID') {
+      throw new BadRequestException('Paid invoices cannot be cancelled');
+    }
+    if (inv.state === 'CANCELLED') {
+      return this.findOne(id);
+    }
+    const updated = await this.prisma.invoice.update({
+      where: { id },
+      data: { state: 'CANCELLED' },
+      include: {
+        contact: true,
+        subscription: true,
+        lines: { include: { product: true } },
+      },
     });
     return this.serializeInvoice(updated);
   }

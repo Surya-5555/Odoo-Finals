@@ -21,6 +21,9 @@ import type { Request, Response } from 'express';
 import { Roles } from './decorators/roles.decorator';
 import { RolesGuard } from './guard/roles.guard';
 
+type RequestWithCookies = Request & { cookies?: Record<string, unknown> };
+type RequestWithUser = Request & { user?: { id: number; role: string } };
+
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -67,9 +70,13 @@ export class AuthController {
 
   @Public()
   @Post('refresh')
-  async refresh(@Req() req: Request) {
+  async refresh(@Req() req: RequestWithCookies) {
     try {
-      const refreshToken = req.cookies?.refreshToken;
+      const cookies = (req as unknown as { cookies?: Record<string, unknown> })
+        .cookies;
+      const cookieValue = cookies?.refreshToken;
+      const refreshToken =
+        typeof cookieValue === 'string' ? cookieValue : undefined;
       if (!refreshToken) throw new UnauthorizedException('Invalid credentials');
 
       const accessToken = await this.authService.refresh(refreshToken);
@@ -85,9 +92,16 @@ export class AuthController {
 
   @Public()
   @Post('logout')
-  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+  async logout(
+    @Req() req: RequestWithCookies,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     try {
-      const refreshToken = req.cookies?.refreshToken;
+      const cookies = (req as unknown as { cookies?: Record<string, unknown> })
+        .cookies;
+      const cookieValue = cookies?.refreshToken;
+      const refreshToken =
+        typeof cookieValue === 'string' ? cookieValue : undefined;
       if (!refreshToken) return { message: 'Already logged out' };
 
       await this.authService.logout(refreshToken);
@@ -125,16 +139,23 @@ export class AuthController {
   @UseGuards(RolesGuard)
   @Roles('ADMIN')
   @Post('internal-user')
-  async createInternalUser(@Req() req: Request, @Body() dto: CreateInternalUserDto) {
+  async createInternalUser(
+    @Req() req: RequestWithUser,
+    @Body() dto: CreateInternalUserDto,
+  ) {
     // JwtAuthGuard populates req.user
-    const requestingUser = (req as any).user as { id: number; role: string };
+    const requestingUser = req.user;
+    if (!requestingUser) throw new UnauthorizedException('Unauthorized');
     return this.authService.createInternalUser(requestingUser, dto);
   }
 
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('change-password')
-  async changePassword(@Req() req: Request, @Body() dto: ChangePasswordDto) {
-    const user = (req as any).user as { id: number } | undefined;
-    return this.authService.changePassword(user?.id, dto);
+  async changePassword(
+    @Req() req: RequestWithUser,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    const userId = req.user?.id;
+    return this.authService.changePassword(userId, dto);
   }
 }
