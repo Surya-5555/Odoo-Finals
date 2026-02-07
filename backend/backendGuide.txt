@@ -6,3 +6,100 @@
 
 4. For using the class-validator functions and class transformer to allow NestJS to convert incoming JSON(Plain JS) to class object to fit in the signupdto
 npm install class-validator class-transformer
+
+5. Endpoints
+   Base URL:
+   http://localhost:3000
+
+   NOTE:
+   - Current backend routes are under /auth (NOT /api/auth).
+   - If you want /api prefix, we can add app.setGlobalPrefix('api') in src/main.ts.
+
+   Auth Endpoints
+
+   Protected endpoints note:
+   - Because JWT auth is enabled globally, any endpoint marked (Protected) requires:
+     Authorization: Bearer <accessToken>
+
+   1) POST /auth/signup   (Public)
+      Body:
+      {
+        "name": "Portal User",
+        "email": "portal1@test.com",
+        "password": "Portal@12345",
+        "confirmPassword": "Portal@12345"
+      }
+
+   2) POST /auth/login   (Public)
+      Body:
+      {
+        "email": "portal1@test.com",
+        "password": "Portal@12345"
+      }
+      Response:
+      - accessToken (Bearer token)
+      - sets refreshToken as httpOnly cookie
+
+   3) POST /auth/refresh   (Public)
+      Needs Cookie:
+      - refreshToken (httpOnly)
+      Response:
+      {
+        "accessToken": "..."
+      }
+
+   4) POST /auth/logout   (Public)
+      Needs Cookie:
+      - refreshToken
+      Clears cookie and deletes refresh token record
+
+   5) POST /auth/forgot-password   (Public)
+      Body:
+      {
+        "email": "portal1@test.com"
+      }
+      Response:
+      - message: "The password reset link has been sent to your email."
+      - In non-production: returns a token for testing
+
+   6) POST /auth/reset-password   (Public)
+      Body (either confirmPassword OR confirmNewPassword is accepted):
+      {
+        "token": "reset-token-from-email",
+        "newPassword": "NewStrong@123",
+        "confirmNewPassword": "NewStrong@123"
+      }
+      OR
+      {
+        "token": "reset-token-from-email",
+        "newPassword": "NewStrong@123",
+        "confirmPassword": "NewStrong@123"
+      }
+
+   7) POST /auth/change-password   (Protected)
+      Header:
+      Authorization: Bearer <accessToken>
+      Body (either confirmPassword OR confirmNewPassword is accepted):
+      {
+        "currentPassword": "OldPass@123",
+        "newPassword": "NewStrong@123",
+        "confirmNewPassword": "NewStrong@123"
+      }
+      - Invalidates refresh tokens after success
+
+   8) POST /auth/internal-user   (Protected, ADMIN only)
+      Header:
+      Authorization: Bearer <ADMIN accessToken>
+      Body:
+      {
+        "name": "Internal User",
+        "email": "internal1@test.com",
+        "password": "Internal@12345",
+        "confirmPassword": "Internal@12345"
+      }
+
+   Admin bootstrap
+   - On startup, if no ADMIN exists, system creates one ADMIN using:
+     ADMIN_EMAIL, ADMIN_NAME from .env
+   - Password is generated one-time and printed once in console.
+   

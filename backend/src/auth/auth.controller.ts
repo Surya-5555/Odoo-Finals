@@ -13,6 +13,7 @@ import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { CreateInternalUserDto } from './dto/create-internal-user.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { AuthService } from './auth.service';
 import { Public } from './decorators/public.decorator';
 import { Throttle } from '@nestjs/throttler';
@@ -82,6 +83,7 @@ export class AuthController {
     }
   }
 
+  @Public()
   @Post('logout')
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     try {
@@ -127,5 +129,12 @@ export class AuthController {
     // JwtAuthGuard populates req.user
     const requestingUser = (req as any).user as { id: number; role: string };
     return this.authService.createInternalUser(requestingUser, dto);
+  }
+
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post('change-password')
+  async changePassword(@Req() req: Request, @Body() dto: ChangePasswordDto) {
+    const user = (req as any).user as { id: number } | undefined;
+    return this.authService.changePassword(user?.id, dto);
   }
 }

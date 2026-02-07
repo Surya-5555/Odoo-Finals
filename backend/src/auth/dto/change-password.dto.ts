@@ -9,10 +9,10 @@ import {
 import { Match } from '../validators/match.decorator';
 import { AtLeastOneOf } from '../validators/at-least-one-of.decorator';
 
-export class ResetPasswordDto {
+export class ChangePasswordDto {
   @IsString()
   @IsNotEmpty()
-  token: string;
+  currentPassword: string;
 
   @IsString()
   @MinLength(9, { message: 'Password must be more than 8 characters' })
@@ -23,9 +23,6 @@ export class ResetPasswordDto {
     },
   )
   newPassword: string;
-
-  // Accept either confirmPassword or confirmNewPassword (frontend/Postman variance).
-  // We require at least one, and whichever is provided must match newPassword.
 
   @AtLeastOneOf(['confirmPassword', 'confirmNewPassword'], {
     message: 'confirmPassword or confirmNewPassword is required',

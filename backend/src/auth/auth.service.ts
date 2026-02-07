@@ -9,6 +9,7 @@ import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { CreateInternalUserDto } from './dto/create-internal-user.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
@@ -261,5 +262,48 @@ export class AuthService {
     ]);
 
     return { message: 'Password reset successful' };
+  }
+
+  async changePassword(userId: number | undefined, dto: ChangePasswordDto) {
+    if (!userId) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const isCurrentValid = await bcrypt.compare(
+      dto.currentPassword,
+      user.password,
+    );
+
+    if (!isCurrentValid) {
+      throw new UnauthorizedException('Invalid password');
+    }
+
+    const isSamePassword = await bcrypt.compare(dto.newPassword, user.password);
+    if (isSamePassword) {
+      throw new BadRequestException('New password must be different');
+    }
+
+    const hashedPassword = await bcrypt.hash(dto.newPassword, 10);
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: userId },
+        data: { password: hashedPassword },
+      }),
+      // Invalidate all active refresh tokens after password change.
+      this.prisma.refreshToken.deleteMany({ where: { userId } }),
+      // Invalidate any outstanding reset tokens.
+      this.prisma.passwordResetToken.updateMany({
+        where: { userId, usedAt: null },
+        data: { usedAt: new Date() },
+      }),
+    ]);
+
+    return { message: 'Password changed successfully' };
   }
 }
