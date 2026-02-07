@@ -1,0 +1,3 @@
+npm install -g @nestjs/cli --> installs nestjs for backend
+nest new backend --> Creates backend folder with setup
+npx prisma migrate dev --name init --> to see visible changes in the db after writing the schema
