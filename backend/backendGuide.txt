@@ -1,3 +1,8 @@
-npm install -g @nestjs/cli --> installs nestjs for backend
-nest new backend --> Creates backend folder with setup
-npx prisma migrate dev --name init --> to see visible changes in the db after writing the schema
+1. npm install -g @nestjs/cli --> installs nestjs for backend
+
+2. nest new backend --> Creates backend folder with setup
+
+3. npx prisma migrate dev --name init --> to see visible changes in the db after writing the schema
+
+4. For using the class-validator functions and class transformer to allow NestJS to convert incoming JSON(Plain JS) to class object to fit in the signupdto
+npm install class-validator class-transformer
