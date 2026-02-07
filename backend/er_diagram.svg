@@ -1,0 +1,303 @@
+<svg width="1400" height="1000" xmlns="http://www.w3.org/2000/svg">
+  <!-- Definitions for gradients and patterns -->
+  <defs>
+    <linearGradient id="entityGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#f8f9fa"/>
+      <stop offset="100%" style="stop-color:#e9ecef"/>
+    </linearGradient>
+    <linearGradient id="keyGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#fff3cd"/>
+      <stop offset="100%" style="stop-color:#ffeaa7"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1400" height="1000" fill="#ffffff"/>
+
+  <!-- Title -->
+  <text x="700" y="30" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#2c3e50">Odoo Subscription System - ER Diagram</text>
+
+  <!-- User Entity -->
+  <g id="user">
+    <rect x="50" y="70" width="160" height="140" fill="url(#entityGradient)" stroke="#2c3e50" stroke-width="2" rx="5"/>
+    <text x="80" y="90" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#2c3e50">User</text>
+    <line x1="50" y1="95" x2="210" y2="95" stroke="#2c3e50" stroke-width="1"/>
+    <text x="55" y="110" font-family="Arial, sans-serif" font-size="10" fill="#333">🔑 id: INT</text>
+    <text x="55" y="125" font-family="Arial, sans-serif" font-size="10" fill="#333">name: VARCHAR</text>
+    <text x="55" y="140" font-family="Arial, sans-serif" font-size="10" fill="#333">email: VARCHAR (UNIQUE)</text>
+    <text x="55" y="155" font-family="Arial, sans-serif" font-size="10" fill="#333">password: VARCHAR</text>
+    <text x="55" y="170" font-family="Arial, sans-serif" font-size="10" fill="#333">role: UserRole</text>
+    <text x="55" y="185" font-family="Arial, sans-serif" font-size="10" fill="#333">createdAt: DATETIME</text>
+  </g>
+
+  <!-- RefreshToken Entity -->
+  <g id="refreshtoken">
+    <rect x="50" y="250" width="160" height="120" fill="url(#entityGradient)" stroke="#2c3e50" stroke-width="2" rx="5"/>
+    <text x="70" y="270" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#2c3e50">RefreshToken</text>
+    <line x1="50" y1="275" x2="210" y2="275" stroke="#2c3e50" stroke-width="1"/>
+    <text x="55" y="290" font-family="Arial, sans-serif" font-size="10" fill="#333">🔑 id: INT</text>
+    <text x="55" y="305" font-family="Arial, sans-serif" font-size="10" fill="#333">token: VARCHAR (UNIQUE)</text>
+    <text x="55" y="320" font-family="Arial, sans-serif" font-size="10" fill="#333">🔗 userId: INT</text>
+    <text x="55" y="335" font-family="Arial, sans-serif" font-size="10" fill="#333">expiresAt: DATETIME</text>
+    <text x="55" y="350" font-family="Arial, sans-serif" font-size="10" fill="#333">createdAt: DATETIME</text>
+  </g>
+
+  <!-- PasswordResetToken Entity -->
+  <g id="passwordresettoken">
+    <rect x="50" y="390" width="160" height="135" fill="url(#entityGradient)" stroke="#2c3e50" stroke-width="2" rx="5"/>
+    <text x="65" y="410" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#2c3e50">PasswordResetToken</text>
+    <line x1="50" y1="415" x2="210" y2="415" stroke="#2c3e50" stroke-width="1"/>
+    <text x="55" y="430" font-family="Arial, sans-serif" font-size="10" fill="#333">🔑 id: INT</text>
+    <text x="55" y="445" font-family="Arial, sans-serif" font-size="10" fill="#333">token: VARCHAR (UNIQUE)</text>
+    <text x="55" y="460" font-family="Arial, sans-serif" font-size="10" fill="#333">🔗 userId: INT</text>
+    <text x="55" y="475" font-family="Arial, sans-serif" font-size="10" fill="#333">expiresAt: DATETIME</text>
+    <text x="55" y="490" font-family="Arial, sans-serif" font-size="10" fill="#333">createdAt: DATETIME</text>
+    <text x="55" y="505" font-family="Arial, sans-serif" font-size="10" fill="#333">usedAt: DATETIME</text>
+  </g>
+
+  <!-- Contact Entity -->
+  <g id="contact">
+    <rect x="300" y="70" width="160" height="165" fill="url(#entityGradient)" stroke="#2c3e50" stroke-width="2" rx="5"/>
+    <text x="365" y="90" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#2c3e50">Contact</text>
+    <line x1="300" y1="95" x2="460" y2="95" stroke="#2c3e50" stroke-width="1"/>
+    <text x="305" y="110" font-family="Arial, sans-serif" font-size="10" fill="#333">🔑 id: INT</text>
+    <text x="305" y="125" font-family="Arial, sans-serif" font-size="10" fill="#333">name: VARCHAR</text>
+    <text x="305" y="140" font-family="Arial, sans-serif" font-size="10" fill="#333">email: VARCHAR</text>
+    <text x="305" y="155" font-family="Arial, sans-serif" font-size="10" fill="#333">phone: VARCHAR</text>
+    <text x="305" y="170" font-family="Arial, sans-serif" font-size="10" fill="#333">address: TEXT</text>
+    <text x="305" y="185" font-family="Arial, sans-serif" font-size="10" fill="#333">companyName: VARCHAR</text>
+    <text x="305" y="200" font-family="Arial, sans-serif" font-size="10" fill="#333">🔗 userId: INT</text>
+    <text x="305" y="215" font-family="Arial, sans-serif" font-size="10" fill="#333">createdAt: DATETIME</text>
+  </g>
+
+  <!-- Product Entity -->
+  <g id="product">
+    <rect x="550" y="70" width="160" height="150" fill="url(#entityGradient)" stroke="#2c3e50" stroke-width="2" rx="5"/>
+    <text x="615" y="90" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#2c3e50">Product</text>
+    <line x1="550" y1="95" x2="710" y2="95" stroke="#2c3e50" stroke-width="1"/>
+    <text x="555" y="110" font-family="Arial, sans-serif" font-size="10" fill="#333">🔑 id: INT</text>
+    <text x="555" y="125" font-family="Arial, sans-serif" font-size="10" fill="#333">name: VARCHAR</text>
+    <text x="555" y="140" font-family="Arial, sans-serif" font-size="10" fill="#333">productType: VARCHAR</text>
+    <text x="555" y="155" font-family="Arial, sans-serif" font-size="10" fill="#333">salesPrice: DECIMAL</text>
+    <text x="555" y="170" font-family="Arial, sans-serif" font-size="10" fill="#333">costPrice: DECIMAL</text>
+    <text x="555" y="185" font-family="Arial, sans-serif" font-size="10" fill="#333">description: TEXT</text>
+    <text x="555" y="200" font-family="Arial, sans-serif" font-size="10" fill="#333">createdAt: DATETIME</text>
+  </g>
+
+  <!-- RecurringPlan Entity -->
+  <g id="recurringplan">
+    <rect x="800" y="70" width="180" height="195" fill="url(#entityGradient)" stroke="#2c3e50" stroke-width="2" rx="5"/>
+    <text x="860" y="90" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#2c3e50">RecurringPlan</text>
+    <line x1="800" y1="95" x2="980" y2="95" stroke="#2c3e50" stroke-width="1"/>
+    <text x="805" y="110" font-family="Arial, sans-serif" font-size="10" fill="#333">🔑 id: INT</text>
+    <text x="805" y="125" font-family="Arial, sans-serif" font-size="10" fill="#333">name: VARCHAR</text>
+    <text x="805" y="140" font-family="Arial, sans-serif" font-size="10" fill="#333">minQuantity: INT</text>
+    <text x="805" y="155" font-family="Arial, sans-serif" font-size="10" fill="#333">startDate: DATETIME</text>
+    <text x="805" y="170" font-family="Arial, sans-serif" font-size="10" fill="#333">endDate: DATETIME</text>
+    <text x="805" y="185" font-family="Arial, sans-serif" font-size="10" fill="#333">autoClose: BOOLEAN</text>
+    <text x="805" y="200" font-family="Arial, sans-serif" font-size="10" fill="#333">autoCloseValidityDays: INT</text>
+    <text x="805" y="215" font-family="Arial, sans-serif" font-size="10" fill="#333">pausable: BOOLEAN</text>
+    <text x="805" y="230" font-family="Arial, sans-serif" font-size="10" fill="#333">renewable: BOOLEAN</text>
+    <text x="805" y="245" font-family="Arial, sans-serif" font-size="10" fill="#333">closable: BOOLEAN</text>
+  </g>
+
+  <!-- RecurringPlanPrice Entity -->
+  <g id="recurringplanprice">
+    <rect x="1050" y="70" width="180" height="165" fill="url(#entityGradient)" stroke="#2c3e50" stroke-width="2" rx="5"/>
+    <text x="1110" y="90" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#2c3e50">RecurringPlanPrice</text>
+    <line x1="1050" y1="95" x2="1230" y2="95" stroke="#2c3e50" stroke-width="1"/>
+    <text x="1055" y="110" font-family="Arial, sans-serif" font-size="10" fill="#333">🔑 id: INT</text>
+    <text x="1055" y="125" font-family="Arial, sans-serif" font-size="10" fill="#333">🔗 recurringPlanId: INT</text>
+    <text x="1055" y="140" font-family="Arial, sans-serif" font-size="10" fill="#333">price: DECIMAL</text>
+    <text x="1055" y="155" font-family="Arial, sans-serif" font-size="10" fill="#333">billingPeriodValue: INT</text>
+    <text x="1055" y="170" font-family="Arial, sans-serif" font-size="10" fill="#333">billingPeriodUnit: ENUM</text>
+    <text x="1055" y="185" font-family="Arial, sans-serif" font-size="10" fill="#333">isDefault: BOOLEAN</text>
+    <text x="1055" y="200" font-family="Arial, sans-serif" font-size="10" fill="#333">createdAt: DATETIME</text>
+    <text x="1055" y="215" font-family="Arial, sans-serif" font-size="10" fill="#333">updatedAt: DATETIME</text>
+  </g>
+
+  <!-- QuotationTemplate Entity -->
+  <g id="quotationtemplate">
+    <rect x="800" y="300" width="160" height="120" fill="url(#entityGradient)" stroke="#2c3e50" stroke-width="2" rx="5"/>
+    <text x="845" y="320" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#2c3e50">QuotationTemplate</text>
+    <line x1="800" y1="325" x2="960" y2="325" stroke="#2c3e50" stroke-width="1"/>
+    <text x="805" y="340" font-family="Arial, sans-serif" font-size="10" fill="#333">🔑 id: INT</text>
+    <text x="805" y="355" font-family="Arial, sans-serif" font-size="10" fill="#333">name: VARCHAR</text>
+    <text x="805" y="370" font-family="Arial, sans-serif" font-size="10" fill="#333">content: TEXT</text>
+    <text x="805" y="385" font-family="Arial, sans-serif" font-size="10" fill="#333">createdAt: DATETIME</text>
+    <text x="805" y="400" font-family="Arial, sans-serif" font-size="10" fill="#333">updatedAt: DATETIME</text>
+  </g>
+
+  <!-- PaymentTerm Entity -->
+  <g id="paymentterm">
+    <rect x="1050" y="300" width="180" height="165" fill="url(#entityGradient)" stroke="#2c3e50" stroke-width="2" rx="5"/>
+    <text x="1120" y="320" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#2c3e50">PaymentTerm</text>
+    <line x1="1050" y1="325" x2="1230" y2="325" stroke="#2c3e50" stroke-width="1"/>
+    <text x="1055" y="340" font-family="Arial, sans-serif" font-size="10" fill="#333">🔑 id: INT</text>
+    <text x="1055" y="355" font-family="Arial, sans-serif" font-size="10" fill="#333">name: VARCHAR</text>
+    <text x="1055" y="370" font-family="Arial, sans-serif" font-size="10" fill="#333">dueAfterDays: INT</text>
+    <text x="1055" y="385" font-family="Arial, sans-serif" font-size="10" fill="#333">earlyDiscountPercent: DECIMAL</text>
+    <text x="1055" y="400" font-family="Arial, sans-serif" font-size="10" fill="#333">earlyDiscountFixed: DECIMAL</text>
+    <text x="1055" y="415" font-family="Arial, sans-serif" font-size="10" fill="#333">earlyDiscountDays: INT</text>
+    <text x="1055" y="430" font-family="Arial, sans-serif" font-size="10" fill="#333">createdAt: DATETIME</text>
+    <text x="1055" y="445" font-family="Arial, sans-serif" font-size="10" fill="#333">updatedAt: DATETIME</text>
+  </g>
+
+  <!-- Subscription Entity (Center) -->
+  <g id="subscription">
+    <rect x="500" y="300" width="220" height="240" fill="url(#entityGradient)" stroke="#e74c3c" stroke-width="3" rx="5"/>
+    <text x="590" y="320" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#e74c3c">Subscription</text>
+    <line x1="500" y1="325" x2="720" y2="325" stroke="#e74c3c" stroke-width="2"/>
+    <text x="505" y="340" font-family="Arial, sans-serif" font-size="10" fill="#333">🔑 id: INT</text>
+    <text x="505" y="355" font-family="Arial, sans-serif" font-size="10" fill="#333">number: VARCHAR (UNIQUE)</text>
+    <text x="505" y="370" font-family="Arial, sans-serif" font-size="10" fill="#333">🔗 contactId: INT</text>
+    <text x="505" y="385" font-family="Arial, sans-serif" font-size="10" fill="#333">🔗 recurringPlanId: INT</text>
+    <text x="505" y="400" font-family="Arial, sans-serif" font-size="10" fill="#333">state: SubscriptionState</text>
+    <text x="505" y="415" font-family="Arial, sans-serif" font-size="10" fill="#333">expirationDate: DATETIME</text>
+    <text x="505" y="430" font-family="Arial, sans-serif" font-size="10" fill="#333">🔗 quotationTemplateId: INT</text>
+    <text x="505" y="445" font-family="Arial, sans-serif" font-size="10" fill="#333">orderDate: DATETIME</text>
+    <text x="505" y="460" font-family="Arial, sans-serif" font-size="10" fill="#333">startDate: DATETIME</text>
+    <text x="505" y="475" font-family="Arial, sans-serif" font-size="10" fill="#333">nextInvoiceDate: DATETIME</text>
+    <text x="505" y="490" font-family="Arial, sans-serif" font-size="10" fill="#333">🔗 paymentTermId: INT</text>
+    <text x="505" y="505" font-family="Arial, sans-serif" font-size="10" fill="#333">🔗 salespersonId: INT</text>
+    <text x="505" y="520" font-family="Arial, sans-serif" font-size="10" fill="#333">createdAt: DATETIME</text>
+  </g>
+
+  <!-- SubscriptionLine Entity -->
+  <g id="subscriptionline">
+    <rect x="300" y="600" width="180" height="180" fill="url(#entityGradient)" stroke="#2c3e50" stroke-width="2" rx="5"/>
+    <text x="360" y="620" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#2c3e50">SubscriptionLine</text>
+    <line x1="300" y1="625" x2="480" y2="625" stroke="#2c3e50" stroke-width="1"/>
+    <text x="305" y="640" font-family="Arial, sans-serif" font-size="10" fill="#333">🔑 id: INT</text>
+    <text x="305" y="655" font-family="Arial, sans-serif" font-size="10" fill="#333">🔗 subscriptionId: INT</text>
+    <text x="305" y="670" font-family="Arial, sans-serif" font-size="10" fill="#333">🔗 productId: INT</text>
+    <text x="305" y="685" font-family="Arial, sans-serif" font-size="10" fill="#333">quantity: DECIMAL</text>
+    <text x="305" y="700" font-family="Arial, sans-serif" font-size="10" fill="#333">unitPrice: DECIMAL</text>
+    <text x="305" y="715" font-family="Arial, sans-serif" font-size="10" fill="#333">discountPercent: DECIMAL</text>
+    <text x="305" y="730" font-family="Arial, sans-serif" font-size="10" fill="#333">taxPercent: DECIMAL</text>
+    <text x="305" y="745" font-family="Arial, sans-serif" font-size="10" fill="#333">amount: DECIMAL</text>
+    <text x="305" y="760" font-family="Arial, sans-serif" font-size="10" fill="#333">createdAt: DATETIME</text>
+  </g>
+
+  <!-- Invoice Entity -->
+  <g id="invoice">
+    <rect x="700" y="600" width="160" height="165" fill="url(#entityGradient)" stroke="#2c3e50" stroke-width="2" rx="5"/>
+    <text x="765" y="620" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#2c3e50">Invoice</text>
+    <line x1="700" y1="625" x2="860" y2="625" stroke="#2c3e50" stroke-width="1"/>
+    <text x="705" y="640" font-family="Arial, sans-serif" font-size="10" fill="#333">🔑 id: INT</text>
+    <text x="705" y="655" font-family="Arial, sans-serif" font-size="10" fill="#333">number: VARCHAR (UNIQUE)</text>
+    <text x="705" y="670" font-family="Arial, sans-serif" font-size="10" fill="#333">🔗 subscriptionId: INT</text>
+    <text x="705" y="685" font-family="Arial, sans-serif" font-size="10" fill="#333">🔗 contactId: INT</text>
+    <text x="705" y="700" font-family="Arial, sans-serif" font-size="10" fill="#333">invoiceDate: DATETIME</text>
+    <text x="705" y="715" font-family="Arial, sans-serif" font-size="10" fill="#333">dueDate: DATETIME</text>
+    <text x="705" y="730" font-family="Arial, sans-serif" font-size="10" fill="#333">state: InvoiceState</text>
+    <text x="705" y="745" font-family="Arial, sans-serif" font-size="10" fill="#333">createdAt: DATETIME</text>
+  </g>
+
+  <!-- InvoiceLine Entity -->
+  <g id="invoiceline">
+    <rect x="950" y="600" width="160" height="165" fill="url(#entityGradient)" stroke="#2c3e50" stroke-width="2" rx="5"/>
+    <text x="1010" y="620" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#2c3e50">InvoiceLine</text>
+    <line x1="950" y1="625" x2="1110" y2="625" stroke="#2c3e50" stroke-width="1"/>
+    <text x="955" y="640" font-family="Arial, sans-serif" font-size="10" fill="#333">🔑 id: INT</text>
+    <text x="955" y="655" font-family="Arial, sans-serif" font-size="10" fill="#333">🔗 invoiceId: INT</text>
+    <text x="955" y="670" font-family="Arial, sans-serif" font-size="10" fill="#333">🔗 productId: INT</text>
+    <text x="955" y="685" font-family="Arial, sans-serif" font-size="10" fill="#333">description: TEXT</text>
+    <text x="955" y="700" font-family="Arial, sans-serif" font-size="10" fill="#333">quantity: DECIMAL</text>
+    <text x="955" y="715" font-family="Arial, sans-serif" font-size="10" fill="#333">unitPrice: DECIMAL</text>
+    <text x="955" y="730" font-family="Arial, sans-serif" font-size="10" fill="#333">taxPercent: DECIMAL</text>
+    <text x="955" y="745" font-family="Arial, sans-serif" font-size="10" fill="#333">amount: DECIMAL</text>
+  </g>
+
+  <!-- Relationships -->
+
+  <!-- User to RefreshToken (1:M) -->
+  <line x1="130" y1="210" x2="130" y2="250" stroke="#3498db" stroke-width="2"/>
+  <text x="135" y="235" font-family="Arial, sans-serif" font-size="8" fill="#3498db">1:M</text>
+  <circle cx="130" cy="250" r="3" fill="#3498db"/>
+
+  <!-- User to PasswordResetToken (1:M) -->
+  <line x1="150" y1="210" x2="150" y2="390" stroke="#3498db" stroke-width="2"/>
+  <text x="155" y="300" font-family="Arial, sans-serif" font-size="8" fill="#3498db">1:M</text>
+  <circle cx="150" cy="390" r="3" fill="#3498db"/>
+
+  <!-- User to Contact (1:1) -->
+  <line x1="210" y1="140" x2="300" y2="140" stroke="#9b59b6" stroke-width="2"/>
+  <text x="245" y="135" font-family="Arial, sans-serif" font-size="8" fill="#9b59b6">1:1</text>
+  <circle cx="300" cy="140" r="3" fill="#9b59b6"/>
+
+  <!-- Contact to Subscription (1:M) -->
+  <line x1="430" y1="300" x2="500" y2="300" stroke="#3498db" stroke-width="2"/>
+  <text x="460" y="295" font-family="Arial, sans-serif" font-size="8" fill="#3498db">1:M</text>
+  <circle cx="500" cy="300" r="3" fill="#3498db"/>
+
+  <!-- RecurringPlan to RecurringPlanPrice (1:M) -->
+  <line x1="980" y1="140" x2="1050" y2="140" stroke="#3498db" stroke-width="2"/>
+  <text x="1010" y="135" font-family="Arial, sans-serif" font-size="8" fill="#3498db">1:M</text>
+  <circle cx="1050" cy="140" r="3" fill="#3498db"/>
+
+  <!-- RecurringPlan to Subscription (1:M) -->
+  <line x1="800" y1="350" x2="720" y2="350" stroke="#3498db" stroke-width="2"/>
+  <text x="750" y="345" font-family="Arial, sans-serif" font-size="8" fill="#3498db">1:M</text>
+  <circle cx="720" cy="350" r="3" fill="#3498db"/>
+
+  <!-- QuotationTemplate to Subscription (1:M) -->
+  <line x1="800" y1="360" x2="720" y2="420" stroke="#3498db" stroke-width="2"/>
+  <text x="750" y="380" font-family="Arial, sans-serif" font-size="8" fill="#3498db">1:M</text>
+  <circle cx="720" cy="420" r="3" fill="#3498db"/>
+
+  <!-- PaymentTerm to Subscription (1:M) -->
+  <line x1="1050" y1="400" x2="720" y2="450" stroke="#3498db" stroke-width="2"/>
+  <text x="880" y="420" font-family="Arial, sans-serif" font-size="8" fill="#3498db">1:M</text>
+  <circle cx="720" cy="450" r="3" fill="#3498db"/>
+
+  <!-- Subscription to SubscriptionLine (1:M) -->
+  <line x1="540" y1="540" x2="420" y2="600" stroke="#3498db" stroke-width="2"/>
+  <text x="470" y="570" font-family="Arial, sans-serif" font-size="8" fill="#3498db">1:M</text>
+  <circle cx="420" cy="600" r="3" fill="#3498db"/>
+
+  <!-- Product to SubscriptionLine (1:M) -->
+  <line x1="630" y1="220" x2="420" y2="600" stroke="#3498db" stroke-width="2"/>
+  <text x="520" y="400" font-family="Arial, sans-serif" font-size="8" fill="#3498db">1:M</text>
+  <circle cx="420" cy="600" r="3" fill="#3498db"/>
+
+  <!-- Subscription to Invoice (1:M) -->
+  <line x1="660" y1="540" x2="740" y2="600" stroke="#3498db" stroke-width="2"/>
+  <text x="695" y="570" font-family="Arial, sans-serif" font-size="8" fill="#3498db">1:M</text>
+  <circle cx="740" cy="600" r="3" fill="#3498db"/>
+
+  <!-- Contact to Invoice (1:M) -->
+  <line x1="460" y1="235" x2="740" y2="600" stroke="#3498db" stroke-width="2"/>
+  <text x="590" y="410" font-family="Arial, sans-serif" font-size="8" fill="#3498db">1:M</text>
+  <circle cx="740" cy="600" r="3" fill="#3498db"/>
+
+  <!-- Invoice to InvoiceLine (1:M) -->
+  <line x1="860" y1="680" x2="950" y2="680" stroke="#3498db" stroke-width="2"/>
+  <text x="900" y="675" font-family="Arial, sans-serif" font-size="8" fill="#3498db">1:M</text>
+  <circle cx="950" cy="680" r="3" fill="#3498db"/>
+
+  <!-- Product to InvoiceLine (1:M) -->
+  <line x1="710" y1="150" x2="1020" y2="600" stroke="#3498db" stroke-width="2"/>
+  <text x="860" y="370" font-family="Arial, sans-serif" font-size="8" fill="#3498db">1:M</text>
+  <circle cx="1020" cy="600" r="3" fill="#3498db"/>
+
+  <!-- Legend -->
+  <g id="legend">
+    <rect x="50" y="850" width="300" height="120" fill="#f8f9fa" stroke="#2c3e50" stroke-width="1" rx="5"/>
+    <text x="60" y="870" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#2c3e50">Legend</text>
+    <line x1="60" y1="880" x2="340" y2="880" stroke="#2c3e50" stroke-width="1"/>
+    
+    <text x="60" y="900" font-family="Arial, sans-serif" font-size="10" fill="#333">🔑 Primary Key</text>
+    <text x="60" y="915" font-family="Arial, sans-serif" font-size="10" fill="#333">🔗 Foreign Key</text>
+    
+    <line x1="200" y1="900" x2="230" y2="900" stroke="#3498db" stroke-width="2"/>
+    <text x="235" y="905" font-family="Arial, sans-serif" font-size="10" fill="#333">One-to-Many (1:M)</text>
+    
+    <line x1="200" y1="920" x2="230" y2="920" stroke="#9b59b6" stroke-width="2"/>
+    <text x="235" y="925" font-family="Arial, sans-serif" font-size="10" fill="#333">One-to-One (1:1)</text>
+    
+    <text x="60" y="940" font-family="Arial, sans-serif" font-size="10" fill="#333">Core Entity: Subscription (highlighted in red)</text>
+    <text x="60" y="955" font-family="Arial, sans-serif" font-size="10" fill="#333">Relationships: Blue=1:M, Purple=1:1</text>
+  </g>
+
+</svg>
