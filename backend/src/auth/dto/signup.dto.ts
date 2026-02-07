@@ -20,6 +20,7 @@ export class SignupDto {
         password: string;
 
         @IsString()
+        @IsNotEmpty()
         @Match('password', { message: 'Passwords do not match' })
         confirmPassword: string;
 }
