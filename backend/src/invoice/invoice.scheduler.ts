@@ -12,7 +12,7 @@ export class InvoiceScheduler {
     private readonly invoiceService: InvoiceService,
   ) {}
 
-  @Cron(CronExpression.EVERY_MINUTE)
+  @Cron(CronExpression.EVERY_5_MINUTES)
   async generateDueInvoices() {
     const now = new Date();
 
