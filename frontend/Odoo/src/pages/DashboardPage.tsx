@@ -19,7 +19,13 @@ export function DashboardPage() {
 						<Button className="bg-muted/30 text-foreground hover:bg-muted/40" onClick={() => navigate('/login')}>
 							Go Login
 						</Button>
-						<Button className="bg-destructive hover:brightness-110" onClick={() => logout()}>
+						<Button
+							className="bg-destructive hover:brightness-110"
+							onClick={() => {
+								logout()
+								navigate('/login')
+							}}
+						>
 							Logout
 						</Button>
 					</div>

@@ -221,11 +221,9 @@ export function AnimatedAuthPage({ initialMode = 'login' }: AnimatedAuthPageProp
   const navigate = useNavigate()
 
   const AUTH_BG = {
-    leftFrom: '#3B82F6',
-    leftVia: '#3474E8',
-    leftTo: '#2C66DB',
-    rightBase: '#060B18',
-    rightGlow: 'rgba(59, 130, 246, 0.10)',
+    leftFrom: '#F7F4FB',
+    leftVia: '#EEF2FF',
+    leftTo: '#F8FAFF',
   } as const
 
   useEffect(() => {
@@ -330,8 +328,24 @@ export function AnimatedAuthPage({ initialMode = 'login' }: AnimatedAuthPageProp
         }
 
         const data = (await res.json()) as { accessToken: string; user?: any }
-        login(data.accessToken, (data as any).user ?? null, rememberMe)
-        navigate('/dashboard')
+
+        // Always sync user from DB so role changes in DB reflect correctly.
+        let me: any = null
+        try {
+          const meRes = await fetch(`${API_BASE_URL}/users/me`, {
+            method: 'GET',
+            headers: { Authorization: `Bearer ${data.accessToken}` },
+            credentials: 'include',
+          })
+          if (meRes.ok) me = await meRes.json()
+        } catch {
+          // ignore
+        }
+
+        login(data.accessToken, me ?? (data as any).user ?? null, rememberMe)
+        const role = (me ?? (data as any)?.user)?.role as string | undefined
+        if (role === 'PORTAL') navigate('/portal/home')
+        else navigate('/app/overview')
       } else {
         if (password !== confirmPassword) {
           setError('Passwords do not match')
@@ -378,9 +392,9 @@ export function AnimatedAuthPage({ initialMode = 'login' }: AnimatedAuthPageProp
   }
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2 relative">
+    <div className="min-h-screen grid lg:grid-cols-2 relative bg-background text-foreground">
       <div
-        className="relative hidden lg:flex flex-col justify-between p-12 text-primary-foreground overflow-hidden"
+        className="relative hidden lg:flex flex-col justify-between p-12 text-foreground overflow-hidden"
         style={{
           background: `linear-gradient(135deg, ${AUTH_BG.leftFrom} 0%, ${AUTH_BG.leftVia} 55%, ${AUTH_BG.leftTo} 100%)`,
         }}
@@ -630,14 +644,14 @@ export function AnimatedAuthPage({ initialMode = 'login' }: AnimatedAuthPageProp
           </div>
         </div>
 
-        <div className="relative z-20 flex items-center gap-8 text-sm text-primary-foreground/60">
-          <a href="#" className="hover:text-primary-foreground transition-colors">
+        <div className="relative z-20 flex items-center gap-8 text-sm text-muted-foreground">
+          <a href="#" className="hover:text-foreground transition-colors">
             Privacy Policy
           </a>
-          <a href="#" className="hover:text-primary-foreground transition-colors">
+          <a href="#" className="hover:text-foreground transition-colors">
             Terms of Service
           </a>
-          <a href="#" className="hover:text-primary-foreground transition-colors">
+          <a href="#" className="hover:text-foreground transition-colors">
             Contact
           </a>
         </div>
@@ -646,22 +660,18 @@ export function AnimatedAuthPage({ initialMode = 'login' }: AnimatedAuthPageProp
           className="absolute inset-0 opacity-20"
           style={{
             backgroundImage:
-              'linear-gradient(to right, rgba(255,255,255,0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.08) 1px, transparent 1px)',
+              'linear-gradient(to right, rgba(0,0,0,0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,0.06) 1px, transparent 1px)',
             backgroundSize: '20px 20px',
           }}
         />
-        <div className="absolute top-1/4 right-1/4 w-64 h-64 bg-primary-foreground/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-primary-foreground/5 rounded-full blur-3xl" />
+        <div className="absolute top-1/4 right-1/4 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
       </div>
 
-      <div
-        className="flex items-center justify-center p-8 relative"
-        style={{
-          background: `radial-gradient(900px 520px at 20% 15%, ${AUTH_BG.rightGlow} 0%, rgba(0,0,0,0) 60%), ${AUTH_BG.rightBase}`,
-        }}
-      >
-        <div className="w-full max-w-105">
-          <div className="lg:hidden mb-12" aria-hidden />
+      <div className="flex items-center justify-center p-8 relative bg-background">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(121,83,135,0.14),transparent_55%),radial-gradient(circle_at_80%_30%,rgba(59,130,246,0.10),transparent_55%)]" />
+
+        <div className="relative w-full max-w-105 rounded-2xl border border-border bg-card p-8 shadow-sm">
 
           <div className="text-center mb-10 transition-all duration-300">
             <h1
@@ -795,7 +805,7 @@ export function AnimatedAuthPage({ initialMode = 'login' }: AnimatedAuthPageProp
             )}
 
             {error && (
-              <div className="p-3 text-sm text-red-300 bg-red-950/20 border border-red-900/30 rounded-lg animate-in slide-in-from-top duration-200">
+              <div className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg animate-in slide-in-from-top duration-200">
                 {error}
               </div>
             )}

@@ -46,7 +46,7 @@ export function ForgotPasswordPage() {
 
 	return (
 		<div className="min-h-screen bg-background text-foreground flex items-center justify-center p-8">
-			<div className="w-full max-w-md rounded-2xl border border-border bg-card/20 backdrop-blur-sm p-7">
+			<div className="w-full max-w-md rounded-2xl border border-border bg-card p-7 shadow-sm">
 				<div className="text-2xl font-bold mb-6 font-handwriting">Forgot Password</div>
 				<form
 					onSubmit={onSubmit}
@@ -57,11 +57,11 @@ export function ForgotPasswordPage() {
 						<Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
 					</div>
 
-					{error && <div className="text-sm text-red-300">{error}</div>}
-					{success && <div className="text-sm text-green-300">{success}</div>}
+					{error && <div className="text-sm text-destructive">{error}</div>}
+					{success && <div className="text-sm text-emerald-700">{success}</div>}
 
 					{devToken && (
-						<div className="rounded-lg border border-border p-3 bg-muted/10">
+						<div className="rounded-lg border border-border p-3 bg-muted/20">
 							<div className="text-xs text-muted-foreground mb-2">Dev token (non-production only)</div>
 							<div className="text-xs break-all">{devToken}</div>
 							<button

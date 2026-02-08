@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Table, TBody, TD, TH, THead, TR } from '@/components/ui/table'
 import { formatDate, SubscriptionStateBadge } from '@/pages/app/ui'
+import { PageHeader } from '@/components/odoo/PageHeader'
 
 export function SubscriptionsPage() {
 	const [data, setData] = React.useState<ListResponse<Subscription> | null>(null)
@@ -37,37 +38,37 @@ export function SubscriptionsPage() {
 
 	return (
 		<div className="space-y-4">
-			<div className="flex items-end justify-between gap-4">
-				<div>
-					<div className="text-2xl font-semibold tracking-tight">Subscriptions</div>
-					<div className="mt-1 text-sm text-muted-foreground">Create, send, confirm, renew, and invoice.</div>
-				</div>
-				<div className="flex items-center gap-2">
-					<select
-						className="h-10 rounded-lg border border-border bg-background px-3 text-sm"
-						value={stateFilter}
-						onChange={(e) => {
-							const v = e.target.value as SubscriptionState | ''
-							setStateFilter(v)
-							void load(v)
-						}}
-					>
-						<option value="">All states</option>
-						<option value="DRAFT">Draft</option>
-						<option value="QUOTATION_SENT">Quotation sent</option>
-						<option value="CONFIRMED">Confirmed</option>
-						<option value="PAUSED">Paused</option>
-						<option value="CLOSED">Closed</option>
-						<option value="CHURNED">Churned</option>
-					</select>
-					<Link to="/app/subscriptions/new">
-						<Button>
-							<Plus className="mr-2 size-4" />
-							New
-						</Button>
-					</Link>
-				</div>
-			</div>
+			<PageHeader
+				title="Subscriptions"
+				subtitle="Create, send, confirm, renew, and invoice."
+				actions={
+					<>
+						<select
+							className="h-10 rounded-lg border border-border bg-background px-3 text-sm"
+							value={stateFilter}
+							onChange={(e) => {
+								const v = e.target.value as SubscriptionState | ''
+								setStateFilter(v)
+								void load(v)
+							}}
+						>
+							<option value="">All states</option>
+							<option value="DRAFT">Draft</option>
+							<option value="QUOTATION_SENT">Quotation sent</option>
+							<option value="CONFIRMED">Confirmed</option>
+							<option value="PAUSED">Paused</option>
+							<option value="CLOSED">Closed</option>
+							<option value="CHURNED">Churned</option>
+						</select>
+						<Link to="/app/subscriptions/new">
+							<Button>
+								<Plus className="mr-2 size-4" />
+								New
+							</Button>
+						</Link>
+					</>
+				}
+			/>
 
 			<Card>
 				<CardHeader>

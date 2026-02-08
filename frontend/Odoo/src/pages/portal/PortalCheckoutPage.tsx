@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, BadgeCheck, Tag, Trash2 } from 'lucide-react'
 
 import { api } from '@/lib/api'
@@ -20,6 +20,7 @@ function pickDefaultPlan(plans: RecurringPlan[]) {
 
 export function PortalCheckoutPage() {
 	const navigate = useNavigate()
+	const [searchParams] = useSearchParams()
 	const { user } = useAuth()
 	const { items, subtotal, setQuantity, removeItem, clear } = useCart()
 
@@ -32,6 +33,7 @@ export function PortalCheckoutPage() {
 	const [discountCode, setDiscountCode] = React.useState('')
 	const [discountApplied, setDiscountApplied] = React.useState<{ code: string; percent: number } | null>(null)
 	const [discountError, setDiscountError] = React.useState<string | null>(null)
+	const initializedDiscountFromUrl = React.useRef(false)
 
 	const [address, setAddress] = React.useState('')
 	const [paymentMethod, setPaymentMethod] = React.useState<PaymentMethod>('ONLINE')
@@ -81,6 +83,27 @@ export function PortalCheckoutPage() {
 			setDiscountError(e?.message ?? 'Invalid discount code')
 		}
 	}
+
+	React.useEffect(() => {
+		if (initializedDiscountFromUrl.current) return
+		const urlCode = (searchParams.get('discount') ?? '').trim()
+		if (!urlCode) {
+			initializedDiscountFromUrl.current = true
+			return
+		}
+		initializedDiscountFromUrl.current = true
+		setDiscountCode(urlCode)
+		void (async () => {
+			setDiscountError(null)
+			try {
+				const res = await api.get<{ code: string; percent: number }>('/discounts/validate', { code: urlCode })
+				setDiscountApplied({ code: res.code, percent: Number(res.percent) })
+			} catch (e: any) {
+				setDiscountApplied(null)
+				setDiscountError(e?.message ?? 'Invalid discount code')
+			}
+		})()
+	}, [searchParams])
 
 	async function getOrCreateContact(): Promise<Contact> {
 		if (!user?.email) throw new Error('Login user email missing')
@@ -153,8 +176,8 @@ export function PortalCheckoutPage() {
 				</Button>
 			</div>
 
-			{error ? <div className="text-sm text-red-300">{error}</div> : null}
-			{discountError ? <div className="text-sm text-red-300">{discountError}</div> : null}
+			{error ? <div className="text-sm text-destructive">{error}</div> : null}
+			{discountError ? <div className="text-sm text-destructive">{discountError}</div> : null}
 
 			<div className="grid gap-4 lg:grid-cols-3">
 				<Card className="lg:col-span-2">

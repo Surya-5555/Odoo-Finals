@@ -86,7 +86,7 @@ export function PortalShopPage() {
 			</div>
 
 			{loading ? <div className="text-sm text-muted-foreground">Loading…</div> : null}
-			{error ? <div className="text-sm text-red-300">{error}</div> : null}
+			{error ? <div className="text-sm text-destructive">{error}</div> : null}
 
 			<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 				{filtered.map((p) => (

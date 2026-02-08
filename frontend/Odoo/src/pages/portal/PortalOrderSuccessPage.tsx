@@ -26,8 +26,8 @@ export function PortalOrderSuccessPage() {
 						<Button className="bg-muted/30 text-foreground hover:bg-muted/40">Continue shopping</Button>
 					</Link>
 					{subscriptionId ? (
-						<Link to={`/app/subscriptions/${subscriptionId}`}>
-							<Button>Open subscription</Button>
+						<Link to={`/portal/orders/${subscriptionId}`}>
+							<Button>Open order</Button>
 						</Link>
 					) : null}
 				</div>

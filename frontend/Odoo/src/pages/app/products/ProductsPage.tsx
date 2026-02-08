@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Table, TBody, TD, TH, THead, TR } from '@/components/ui/table'
 import { formatMoney } from '@/pages/app/ui'
+import { PageHeader } from '@/components/odoo/PageHeader'
 
 export function ProductsPage() {
 	const [data, setData] = React.useState<ListResponse<Product> | null>(null)
@@ -43,18 +44,18 @@ export function ProductsPage() {
 
 	return (
 		<div className="space-y-4">
-			<div className="flex items-end justify-between gap-4">
-				<div>
-					<div className="text-2xl font-semibold tracking-tight">Products</div>
-					<div className="mt-1 text-sm text-muted-foreground">Manage products used in subscription lines.</div>
-				</div>
-				<Link to="/app/products/new">
-					<Button>
-						<Plus className="mr-2 size-4" />
-						New Product
-					</Button>
-				</Link>
-			</div>
+			<PageHeader
+				title="Products"
+				subtitle="Manage products used in subscription lines."
+				actions={
+					<Link to="/app/products/new">
+						<Button>
+							<Plus className="mr-2 size-4" />
+							New
+						</Button>
+					</Link>
+				}
+			/>
 
 			<Card>
 				<CardHeader>

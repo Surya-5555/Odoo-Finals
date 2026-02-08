@@ -20,6 +20,21 @@ const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL ?? ''
 
 const ACCESS_TOKEN_KEY = 'odoo_access_token'
 const USER_KEY = 'odoo_user'
+const LOGOUT_AT_KEY = 'odoo_logout_at'
+const CART_KEY = 'odoo_portal_cart'
+const LOGOUT_WINDOW_MS = 5_000
+
+function isInLogoutWindow(): boolean {
+	try {
+		const raw = localStorage.getItem(LOGOUT_AT_KEY)
+		if (!raw) return false
+		const ts = Number(raw)
+		if (!Number.isFinite(ts)) return false
+		return Date.now() - ts < LOGOUT_WINDOW_MS
+	} catch {
+		return false
+	}
+}
 
 function getAccessToken(): string | null {
 	try {
@@ -33,6 +48,7 @@ function handleUnauthorized() {
 	try {
 		localStorage.removeItem(ACCESS_TOKEN_KEY)
 		localStorage.removeItem(USER_KEY)
+		localStorage.removeItem(CART_KEY)
 	} catch {
 		// ignore
 	}
@@ -44,6 +60,8 @@ function handleUnauthorized() {
 }
 
 function setAccessToken(token: string) {
+	// Avoid resurrecting a session due to an in-flight refresh right after logout.
+	if (isInLogoutWindow()) return
 	try {
 		localStorage.setItem(ACCESS_TOKEN_KEY, token)
 	} catch {
@@ -57,9 +75,11 @@ function setAccessToken(token: string) {
 }
 
 async function tryRefreshAccessToken(): Promise<string | null> {
+	if (isInLogoutWindow()) return null
 	try {
 		const res = await fetch(buildUrl('/auth/refresh'), {
 			method: 'POST',
+			credentials: 'include',
 		})
 		if (!res.ok) return null
 		const data = (await res.json()) as { accessToken?: string }
@@ -118,6 +138,7 @@ export async function apiFetch<T>(
 	const token = getAccessToken()
 	const res = await fetch(url, {
 		...init,
+		credentials: 'include',
 		headers: {
 			...(init?.headers ?? {}),
 			...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -125,11 +146,20 @@ export async function apiFetch<T>(
 	})
 
 	if (res.status === 401) {
+		// If we didn't send an access token, don't attempt refresh.
+		// This prevents "logout" from silently re-authing via refresh cookie.
+		if (!token) {
+			handleUnauthorized()
+			const body = await parseErrorBody(res)
+			throw new ApiError(toErrorMessage(body, `Request failed (${res.status})`), res.status, body)
+		}
+
 		// Access token likely expired; try refresh (once) and retry original request.
 		const newToken = await tryRefreshAccessToken()
 		if (newToken) {
 			const retryRes = await fetch(url, {
 				...init,
+				credentials: 'include',
 				headers: {
 					...(init?.headers ?? {}),
 					Authorization: `Bearer ${newToken}`,
@@ -170,9 +200,67 @@ export async function apiFetch<T>(
 	return (await res.json()) as T
 }
 
+export async function apiFetchBlob(
+	path: string,
+	init?: RequestInit & { query?: Record<string, string | number | boolean | undefined | null> },
+): Promise<{ blob: Blob; contentType: string | null } > {
+	const url = buildUrl(path, init?.query)
+	const token = getAccessToken()
+	const res = await fetch(url, {
+		...init,
+		credentials: 'include',
+		headers: {
+			...(init?.headers ?? {}),
+			...(token ? { Authorization: `Bearer ${token}` } : {}),
+		},
+	})
+
+	if (res.status === 401) {
+		if (!token) {
+			handleUnauthorized()
+			const body = await parseErrorBody(res)
+			throw new ApiError(toErrorMessage(body, `Request failed (${res.status})`), res.status, body)
+		}
+
+		const newToken = await tryRefreshAccessToken()
+		if (newToken) {
+			const retryRes = await fetch(url, {
+				...init,
+				credentials: 'include',
+				headers: {
+					...(init?.headers ?? {}),
+					Authorization: `Bearer ${newToken}`,
+				},
+			})
+			if (!retryRes.ok) {
+				const body = await parseErrorBody(retryRes)
+				if (retryRes.status === 401) handleUnauthorized()
+				throw new ApiError(
+					toErrorMessage(body, `Request failed (${retryRes.status})`),
+					retryRes.status,
+					body,
+				)
+			}
+			return { blob: await retryRes.blob(), contentType: retryRes.headers.get('content-type') }
+		}
+		handleUnauthorized()
+		const body = await parseErrorBody(res)
+		throw new ApiError(toErrorMessage(body, `Request failed (${res.status})`), res.status, body)
+	}
+
+	if (!res.ok) {
+		const body = await parseErrorBody(res)
+		throw new ApiError(toErrorMessage(body, `Request failed (${res.status})`), res.status, body)
+	}
+
+	return { blob: await res.blob(), contentType: res.headers.get('content-type') }
+}
+
 export const api = {
 	get: <T>(path: string, query?: Record<string, string | number | boolean | undefined | null>) =>
 		apiFetch<T>(path, { method: 'GET', query }),
+	getBlob: (path: string, query?: Record<string, string | number | boolean | undefined | null>) =>
+		apiFetchBlob(path, { method: 'GET', query }),
 	post: <T>(path: string, body?: unknown) =>
 		apiFetch<T>(path, {
 			method: 'POST',

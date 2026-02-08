@@ -67,7 +67,7 @@ export function PortalProductDetailPage() {
 			</div>
 
 			{loading ? <div className="text-sm text-muted-foreground">Loading…</div> : null}
-			{error ? <div className="text-sm text-red-300">{error}</div> : null}
+			{error ? <div className="text-sm text-destructive">{error}</div> : null}
 
 			{product ? (
 				<Card className="max-w-3xl">

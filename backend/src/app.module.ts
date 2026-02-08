@@ -17,6 +17,7 @@ import { TaxModule } from './tax/tax.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { DiscountModule } from './discount/discount.module';
 import { ReportingModule } from './reporting/reporting.module';
+import { UserModule } from './user/user.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { ReportingModule } from './reporting/reporting.module';
     TaxModule,
     DiscountModule,
     ReportingModule,
+    UserModule,
   ],
   controllers: [AppController],
   providers: [

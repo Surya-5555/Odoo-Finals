@@ -7,6 +7,7 @@ import type { Contact, ListResponse } from '@/pages/app/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Table, TBody, TD, TH, THead, TR } from '@/components/ui/table'
+import { PageHeader } from '@/components/odoo/PageHeader'
 
 export function ContactsPage() {
 	const [data, setData] = React.useState<ListResponse<Contact> | null>(null)
@@ -42,18 +43,18 @@ export function ContactsPage() {
 
 	return (
 		<div className="space-y-4">
-			<div className="flex items-end justify-between gap-4">
-				<div>
-					<div className="text-2xl font-semibold tracking-tight">Contacts</div>
-					<div className="mt-1 text-sm text-muted-foreground">Customers and linked portal users.</div>
-				</div>
-				<Link to="/app/contacts/new">
-					<Button>
-						<Plus className="mr-2 size-4" />
-						New Contact
-					</Button>
-				</Link>
-			</div>
+			<PageHeader
+				title="Contacts"
+				subtitle="Customers and linked portal users."
+				actions={
+					<Link to="/app/contacts/new">
+						<Button>
+							<Plus className="mr-2 size-4" />
+							New
+						</Button>
+					</Link>
+				}
+			/>
 
 			<Card>
 				<CardHeader>

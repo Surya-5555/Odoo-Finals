@@ -58,7 +58,7 @@ export function ResetPasswordPage() {
 
 	return (
 		<div className="min-h-screen bg-background text-foreground flex items-center justify-center p-8">
-			<div className="w-full max-w-md rounded-2xl border border-border bg-card/20 backdrop-blur-sm p-7">
+			<div className="w-full max-w-md rounded-2xl border border-border bg-card p-7 shadow-sm">
 				<div className="text-2xl font-bold mb-6 font-handwriting">Reset Password</div>
 				<form
 					onSubmit={onSubmit}
@@ -83,8 +83,8 @@ export function ResetPasswordPage() {
 						/>
 					</div>
 
-					{error && <div className="text-sm text-red-300">{error}</div>}
-					{success && <div className="text-sm text-green-300">{success}</div>}
+					{error && <div className="text-sm text-destructive">{error}</div>}
+					{success && <div className="text-sm text-emerald-700">{success}</div>}
 					<Button type="submit" className="w-full" size="lg">
 						{isLoading ? 'Updating…' : 'Submit'}
 					</Button>

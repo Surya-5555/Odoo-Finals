@@ -50,6 +50,7 @@ export class AuthController {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
+        path: '/',
         maxAge: 30 * 24 * 60 * 60 * 1000,
       });
 
@@ -92,12 +93,15 @@ export class AuthController {
 
       await this.authService.logout(refreshToken);
 
-      res.clearCookie('refreshToken', {
+      // Clear cookie on both possible paths.
+      // Older sessions may have the default path '/auth' (set on /auth/login).
+      const cookieOpts = {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        path: '/', // must match login cookie
-      });
+        sameSite: 'strict' as const,
+      };
+      res.clearCookie('refreshToken', { ...cookieOpts, path: '/' });
+      res.clearCookie('refreshToken', { ...cookieOpts, path: '/auth' });
 
       return { message: 'Logged out successfully' };
     } catch (error) {
