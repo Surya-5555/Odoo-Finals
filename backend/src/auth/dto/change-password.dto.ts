@@ -16,12 +16,10 @@ export class ChangePasswordDto {
 
   @IsString()
   @MinLength(9, { message: 'Password must be more than 8 characters' })
-  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{9,}$/,
-    {
-      message:
-        'Password must contain uppercase, lowercase, special character, and be more than 8 characters',
-    },
-  )
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{9,}$/, {
+    message:
+      'Password must contain uppercase, lowercase, special character, and be more than 8 characters',
+  })
   newPassword: string;
 
   @AtLeastOneOf(['confirmPassword', 'confirmNewPassword'], {

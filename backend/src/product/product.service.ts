@@ -14,7 +14,8 @@ export class ProductService {
         name: dto.name,
         productType: dto.productType,
         salesPrice: new Prisma.Decimal(dto.salesPrice),
-        costPrice: dto.costPrice != null ? new Prisma.Decimal(dto.costPrice) : undefined,
+        costPrice:
+          dto.costPrice != null ? new Prisma.Decimal(dto.costPrice) : undefined,
         description: dto.description,
       },
     });

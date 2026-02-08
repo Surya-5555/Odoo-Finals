@@ -43,6 +43,33 @@ export class SubscriptionService {
     return Math.round(amount * 100) / 100;
   }
 
+  private async getValidDiscountOrThrow(code: string) {
+    const normalized = code.trim().toUpperCase();
+    if (!normalized) throw new BadRequestException('Discount code required');
+
+    const d = await this.prisma.discount.findUnique({
+      where: { code: normalized },
+    });
+    if (!d || !d.isActive) throw new BadRequestException('Invalid discount code');
+
+    const t = new Date();
+    if (d.startsAt && t < d.startsAt)
+      throw new BadRequestException('Discount not active yet');
+    if (d.endsAt && t > d.endsAt)
+      throw new BadRequestException('Discount expired');
+
+    if (d.limitUsage) {
+      if (!d.usageLimit || d.usageLimit < 1) {
+        throw new BadRequestException('Discount misconfigured: usageLimit missing');
+      }
+      if (d.timesUsed >= d.usageLimit) {
+        throw new BadRequestException('Discount usage limit reached');
+      }
+    }
+
+    return d;
+  }
+
   async create(dto: CreateSubscriptionDto) {
     const number = await this.generateSubscriptionNumber();
     const contact = await this.prisma.contact.findUnique({
@@ -55,59 +82,112 @@ export class SubscriptionService {
     });
     if (!plan) throw new NotFoundException('Recurring plan not found');
 
+    const portalDiscountCode = dto.portal?.discountCode?.trim();
+    const discount = portalDiscountCode
+      ? await this.getValidDiscountOrThrow(portalDiscountCode)
+      : null;
+    const discountPercent = discount ? Number(discount.percent) : null;
+
     const lines = dto.lines ?? [];
+    if (discount && lines.length === 0) {
+      throw new BadRequestException(
+        'Discount code cannot be applied without order lines',
+      );
+    }
+
+    if (discount?.productId != null) {
+      const hasEligible = lines.some((l) => l.productId === discount.productId);
+      if (!hasEligible) {
+        throw new BadRequestException(
+          'Discount not applicable to selected products',
+        );
+      }
+    }
+
     const lineCreates: Prisma.SubscriptionLineCreateWithoutSubscriptionInput[] =
       [];
     for (const line of lines) {
       const product = await this.prisma.product.findUnique({
         where: { id: line.productId },
       });
-      if (!product) throw new NotFoundException(`Product ${line.productId} not found`);
+      if (!product)
+        throw new NotFoundException(`Product ${line.productId} not found`);
+
+      const effectiveDiscountPercent =
+        line.discountPercent != null
+          ? line.discountPercent
+          : discount && discountPercent != null
+            ? discount.productId == null || discount.productId === line.productId
+              ? discountPercent
+              : undefined
+            : undefined;
+
       const amount = this.computeLineAmount(
         line.quantity,
         line.unitPrice,
-        line.discountPercent,
+        effectiveDiscountPercent,
         line.taxPercent,
       );
       lineCreates.push({
         product: { connect: { id: line.productId } },
         quantity: new Prisma.Decimal(line.quantity),
         unitPrice: new Prisma.Decimal(line.unitPrice),
-        discountPercent: line.discountPercent
-          ? new Prisma.Decimal(line.discountPercent)
+        discountPercent:
+          effectiveDiscountPercent != null
+            ? new Prisma.Decimal(effectiveDiscountPercent)
+            : null,
+        taxPercent: line.taxPercent
+          ? new Prisma.Decimal(line.taxPercent)
           : null,
-        taxPercent: line.taxPercent ? new Prisma.Decimal(line.taxPercent) : null,
         amount: new Prisma.Decimal(amount),
       });
     }
 
-    const subscription = await this.prisma.subscription.create({
-      data: {
-        number,
-        contactId: dto.contactId,
-        recurringPlanId: dto.recurringPlanId,
-        state: 'DRAFT',
-        expirationDate: dto.expirationDate
-          ? new Date(dto.expirationDate)
-          : undefined,
-        quotationTemplateId: dto.quotationTemplateId ?? undefined,
-        orderDate: dto.orderDate ? new Date(dto.orderDate) : undefined,
-        paymentTermId: dto.paymentTermId ?? undefined,
-        salespersonId: dto.salespersonId ?? undefined,
-        lines: lineCreates.length ? { create: lineCreates } : undefined,
-      },
-      include: {
-        contact: true,
-        recurringPlan: { include: { prices: true } },
-        lines: { include: { product: true } },
-        paymentTerm: true,
-      },
+    const subscription = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.subscription.create({
+        data: {
+          number,
+          contactId: dto.contactId,
+          recurringPlanId: dto.recurringPlanId,
+          state: 'DRAFT',
+          expirationDate: dto.expirationDate
+            ? new Date(dto.expirationDate)
+            : undefined,
+          quotationTemplateId: dto.quotationTemplateId ?? undefined,
+          orderDate: dto.orderDate ? new Date(dto.orderDate) : undefined,
+          paymentTermId: dto.paymentTermId ?? undefined,
+          salespersonId: dto.salespersonId ?? undefined,
+          lines: lineCreates.length ? { create: lineCreates } : undefined,
+        },
+        include: {
+          contact: true,
+          recurringPlan: { include: { prices: true } },
+          lines: { include: { product: true } },
+          paymentTerm: true,
+        },
+      });
+
+      if (discount?.limitUsage) {
+        await tx.discount.update({
+          where: { id: discount.id },
+          data: { timesUsed: { increment: 1 } },
+        });
+      }
+
+      return created;
     });
     return this.serializeSubscription(subscription);
   }
 
   private serializeSubscription(sub: {
-    lines: { product: unknown; quantity: unknown; unitPrice: unknown; amount: unknown; discountPercent: unknown; taxPercent: unknown }[];
+    lines: {
+      product: unknown;
+      quantity: unknown;
+      unitPrice: unknown;
+      amount: unknown;
+      discountPercent: unknown;
+      taxPercent: unknown;
+    }[];
     recurringPlan: { prices: { price: unknown }[] };
     [k: string]: unknown;
   }) {
@@ -128,7 +208,9 @@ export class SubscriptionService {
         unitPrice: l.unitPrice != null ? Number(l.unitPrice) : l.unitPrice,
         amount: l.amount != null ? Number(l.amount) : l.amount,
         discountPercent:
-          l.discountPercent != null ? Number(l.discountPercent) : l.discountPercent,
+          l.discountPercent != null
+            ? Number(l.discountPercent)
+            : l.discountPercent,
         taxPercent: l.taxPercent != null ? Number(l.taxPercent) : l.taxPercent,
       }));
     return rec;
@@ -303,12 +385,12 @@ export class SubscriptionService {
     const startDate = sub.orderDate ?? now;
     let nextInvoiceDate: Date | null = null;
     const defaultPrice =
-      await this.prisma.recurringPlanPrice.findFirst({
+      (await this.prisma.recurringPlanPrice.findFirst({
         where: {
           recurringPlanId: sub.recurringPlanId,
           isDefault: true,
         },
-      }) ||
+      })) ||
       (await this.prisma.recurringPlanPrice.findFirst({
         where: { recurringPlanId: sub.recurringPlanId },
       }));
@@ -358,15 +440,16 @@ export class SubscriptionService {
     const number = await this.generateSubscriptionNumber();
     const now = new Date();
     let nextInvoiceDate: Date | null = null;
-    const defaultPrice = await this.prisma.recurringPlanPrice.findFirst({
-      where: {
-        recurringPlanId: plan.id,
-        isDefault: true,
-      },
-    }) ||
-    (await this.prisma.recurringPlanPrice.findFirst({
-      where: { recurringPlanId: plan.id },
-    }));
+    const defaultPrice =
+      (await this.prisma.recurringPlanPrice.findFirst({
+        where: {
+          recurringPlanId: plan.id,
+          isDefault: true,
+        },
+      })) ||
+      (await this.prisma.recurringPlanPrice.findFirst({
+        where: { recurringPlanId: plan.id },
+      }));
     if (defaultPrice) {
       const next = new Date(now);
       if (defaultPrice.billingPeriodUnit === 'MONTH')
@@ -442,7 +525,9 @@ export class SubscriptionService {
     });
     if (!sub) throw new NotFoundException('Subscription not found');
     if (sub.state !== 'CONFIRMED') {
-      throw new BadRequestException('Only confirmed subscriptions can be paused');
+      throw new BadRequestException(
+        'Only confirmed subscriptions can be paused',
+      );
     }
     if (!sub.recurringPlan.pausable) {
       throw new BadRequestException('This plan is not pausable');
@@ -526,9 +611,9 @@ export class SubscriptionService {
     const now = new Date();
     let nextInvoiceDate: Date | null = null;
     const defaultPrice =
-      await this.prisma.recurringPlanPrice.findFirst({
+      (await this.prisma.recurringPlanPrice.findFirst({
         where: { recurringPlanId: plan.id, isDefault: true },
-      }) ||
+      })) ||
       (await this.prisma.recurringPlanPrice.findFirst({
         where: { recurringPlanId: plan.id },
       }));
@@ -549,7 +634,8 @@ export class SubscriptionService {
       const product = await this.prisma.product.findUnique({
         where: { id: line.productId },
       });
-      if (!product) throw new NotFoundException(`Product ${line.productId} not found`);
+      if (!product)
+        throw new NotFoundException(`Product ${line.productId} not found`);
       const amount = this.computeLineAmount(
         line.quantity,
         line.unitPrice,
@@ -563,7 +649,9 @@ export class SubscriptionService {
         discountPercent: line.discountPercent
           ? new Prisma.Decimal(line.discountPercent)
           : null,
-        taxPercent: line.taxPercent ? new Prisma.Decimal(line.taxPercent) : null,
+        taxPercent: line.taxPercent
+          ? new Prisma.Decimal(line.taxPercent)
+          : null,
         amount: new Prisma.Decimal(amount),
       });
     }

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
@@ -27,6 +27,7 @@ const Pupil = ({
 }: PupilProps) => {
   const [mouseX, setMouseX] = useState<number>(0)
   const [mouseY, setMouseY] = useState<number>(0)
+  const [pupilRect, setPupilRect] = useState<DOMRect | null>(null)
   const pupilRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -39,27 +40,40 @@ const Pupil = ({
     return () => window.removeEventListener('mousemove', handleMouseMove)
   }, [])
 
-  const calculatePupilPosition = () => {
-    if (!pupilRef.current) return { x: 0, y: 0 }
+  useLayoutEffect(() => {
+    if (!pupilRef.current) return
+
+    const update = () => {
+      if (!pupilRef.current) return
+      setPupilRect(pupilRef.current.getBoundingClientRect())
+    }
+
+    update()
+    window.addEventListener('resize', update)
+    window.addEventListener('scroll', update, true)
+    return () => {
+      window.removeEventListener('resize', update)
+      window.removeEventListener('scroll', update, true)
+    }
+  }, [])
+
+  const pupilPosition = React.useMemo(() => {
     if (forceLookX !== undefined && forceLookY !== undefined) {
       return { x: forceLookX, y: forceLookY }
     }
 
-    const pupil = pupilRef.current.getBoundingClientRect()
-    const pupilCenterX = pupil.left + pupil.width / 2
-    const pupilCenterY = pupil.top + pupil.height / 2
+    if (!pupilRect) return { x: 0, y: 0 }
 
+    const pupilCenterX = pupilRect.left + pupilRect.width / 2
+    const pupilCenterY = pupilRect.top + pupilRect.height / 2
     const deltaX = mouseX - pupilCenterX
     const deltaY = mouseY - pupilCenterY
     const distance = Math.min(Math.sqrt(deltaX ** 2 + deltaY ** 2), maxDistance)
     const angle = Math.atan2(deltaY, deltaX)
     const x = Math.cos(angle) * distance
     const y = Math.sin(angle) * distance
-
     return { x, y }
-  }
-
-  const pupilPosition = calculatePupilPosition()
+  }, [forceLookX, forceLookY, maxDistance, mouseX, mouseY, pupilRect])
 
   return (
     <div
@@ -99,6 +113,7 @@ const EyeBall = ({
 }: EyeBallProps) => {
   const [mouseX, setMouseX] = useState<number>(0)
   const [mouseY, setMouseY] = useState<number>(0)
+  const [eyeRect, setEyeRect] = useState<DOMRect | null>(null)
   const eyeRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -111,27 +126,40 @@ const EyeBall = ({
     return () => window.removeEventListener('mousemove', handleMouseMove)
   }, [])
 
-  const calculatePupilPosition = () => {
-    if (!eyeRef.current) return { x: 0, y: 0 }
+  useLayoutEffect(() => {
+    if (!eyeRef.current) return
+
+    const update = () => {
+      if (!eyeRef.current) return
+      setEyeRect(eyeRef.current.getBoundingClientRect())
+    }
+
+    update()
+    window.addEventListener('resize', update)
+    window.addEventListener('scroll', update, true)
+    return () => {
+      window.removeEventListener('resize', update)
+      window.removeEventListener('scroll', update, true)
+    }
+  }, [])
+
+  const pupilPosition = React.useMemo(() => {
     if (forceLookX !== undefined && forceLookY !== undefined) {
       return { x: forceLookX, y: forceLookY }
     }
 
-    const eye = eyeRef.current.getBoundingClientRect()
-    const eyeCenterX = eye.left + eye.width / 2
-    const eyeCenterY = eye.top + eye.height / 2
+    if (!eyeRect) return { x: 0, y: 0 }
 
+    const eyeCenterX = eyeRect.left + eyeRect.width / 2
+    const eyeCenterY = eyeRect.top + eyeRect.height / 2
     const deltaX = mouseX - eyeCenterX
     const deltaY = mouseY - eyeCenterY
     const distance = Math.min(Math.sqrt(deltaX ** 2 + deltaY ** 2), maxDistance)
     const angle = Math.atan2(deltaY, deltaX)
     const x = Math.cos(angle) * distance
     const y = Math.sin(angle) * distance
-
     return { x, y }
-  }
-
-  const pupilPosition = calculatePupilPosition()
+  }, [forceLookX, forceLookY, maxDistance, mouseX, mouseY, eyeRect])
 
   return (
     <div
@@ -301,8 +329,8 @@ export function AnimatedAuthPage({ initialMode = 'login' }: AnimatedAuthPageProp
           throw new Error(errorData.message || 'Invalid credentials')
         }
 
-        const data = (await res.json()) as { accessToken: string }
-        login(data.accessToken, rememberMe)
+        const data = (await res.json()) as { accessToken: string; user?: any }
+        login(data.accessToken, (data as any).user ?? null, rememberMe)
         navigate('/dashboard')
       } else {
         if (password !== confirmPassword) {

@@ -13,11 +13,18 @@ import { ProductModule } from './product/product.module';
 import { InvoiceModule } from './invoice/invoice.module';
 import { PaymentTermModule } from './payment-term/payment-term.module';
 import { QuotationTemplateModule } from './quotation-template/quotation-template.module';
+import { TaxModule } from './tax/tax.module';
+import { PrismaModule } from './prisma/prisma.module';
+import { DiscountModule } from './discount/discount.module';
+import { ReportingModule } from './reporting/reporting.module';
 
 @Module({
   imports: [
+    PrismaModule,
     ConfigModule.forRoot({
       isGlobal: true,
+      // Support starting the server from either repo root or the backend folder.
+      envFilePath: ['.env', 'backend/.env'],
     }),
     AuthModule,
     RecurringPlanModule,
@@ -27,6 +34,9 @@ import { QuotationTemplateModule } from './quotation-template/quotation-template
     InvoiceModule,
     PaymentTermModule,
     QuotationTemplateModule,
+    TaxModule,
+    DiscountModule,
+    ReportingModule,
   ],
   controllers: [AppController],
   providers: [

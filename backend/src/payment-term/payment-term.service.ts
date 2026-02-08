@@ -38,7 +38,9 @@ export class PaymentTermService {
       data: data.map((p) => ({
         ...p,
         earlyDiscountPercent:
-          p.earlyDiscountPercent != null ? Number(p.earlyDiscountPercent) : null,
+          p.earlyDiscountPercent != null
+            ? Number(p.earlyDiscountPercent)
+            : null,
         earlyDiscountFixed:
           p.earlyDiscountFixed != null ? Number(p.earlyDiscountFixed) : null,
       })),
@@ -58,7 +60,9 @@ export class PaymentTermService {
           ? Number(term.earlyDiscountPercent)
           : null,
       earlyDiscountFixed:
-        term.earlyDiscountFixed != null ? Number(term.earlyDiscountFixed) : null,
+        term.earlyDiscountFixed != null
+          ? Number(term.earlyDiscountFixed)
+          : null,
     };
   }
 
@@ -68,7 +72,9 @@ export class PaymentTermService {
       where: { id },
       data: {
         ...(dto.name !== undefined && { name: dto.name }),
-        ...(dto.dueAfterDays !== undefined && { dueAfterDays: dto.dueAfterDays }),
+        ...(dto.dueAfterDays !== undefined && {
+          dueAfterDays: dto.dueAfterDays,
+        }),
         ...(dto.earlyDiscountPercent !== undefined && {
           earlyDiscountPercent: new Prisma.Decimal(dto.earlyDiscountPercent),
         }),

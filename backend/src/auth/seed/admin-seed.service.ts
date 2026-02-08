@@ -79,7 +79,7 @@ export class AdminSeedService implements OnModuleInit {
     // Print ONLY once, only when we successfully created the admin.
     // WARNING: In real enterprise setups, prefer writing this secret to a secure secret manager
     // or a one-time delivery channel instead of logs.
-    // eslint-disable-next-line no-console
+
     console.log(
       `\n=== ADMIN BOOTSTRAP PASSWORD (DISPLAYED ONCE) ===\n` +
         `email: ${email}\n` +

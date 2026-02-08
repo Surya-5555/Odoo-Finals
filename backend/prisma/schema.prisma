@@ -100,6 +100,7 @@ model Product {
 
   subscriptionLines SubscriptionLine[]
   invoiceLines      InvoiceLine[]
+  discounts         Discount[]
 }
 
 model RecurringPlan {
@@ -218,6 +219,12 @@ enum InvoiceState {
   DRAFT
   CONFIRMED
   PAID
+  CANCELLED
+}
+
+enum PaymentMethod {
+  ONLINE
+  CASH
 }
 
 model Invoice {
@@ -230,6 +237,8 @@ model Invoice {
   invoiceDate   DateTime
   dueDate        DateTime
   state          InvoiceState @default(DRAFT)
+  paymentMethod  PaymentMethod?
+  paymentDate    DateTime?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
@@ -255,5 +264,42 @@ model InvoiceLine {
   updatedAt   DateTime @updatedAt
 
   @@index([invoiceId])
+  @@index([productId])
+}
+
+// =========================
+// TAXES (MASTER)
+// =========================
+
+model Tax {
+  id          Int      @id @default(autoincrement())
+  name        String
+  percent     Decimal  @db.Decimal(5, 2)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([name])
+  @@index([isActive])
+}
+
+model Discount {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique
+  percent   Decimal  @db.Decimal(5, 2)
+  isActive  Boolean  @default(true)
+  startsAt  DateTime?
+  endsAt    DateTime?
+  limitUsage Boolean @default(false)
+  usageLimit Int?
+  timesUsed  Int     @default(0)
+  productId  Int?
+  product    Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([startsAt])
+  @@index([endsAt])
   @@index([productId])
 }

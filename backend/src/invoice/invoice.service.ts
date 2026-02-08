@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { InvoiceState, Prisma } from '@prisma/client';
+import { InvoiceState, PaymentMethod, Prisma } from '@prisma/client';
 
 @Injectable()
 export class InvoiceService {
@@ -82,7 +82,12 @@ export class InvoiceService {
   }
 
   private serializeInvoice(inv: {
-    lines: { amount: unknown; unitPrice: unknown; quantity: unknown; taxPercent: unknown }[];
+    lines: {
+      amount: unknown;
+      unitPrice: unknown;
+      quantity: unknown;
+      taxPercent: unknown;
+    }[];
     [k: string]: unknown;
   }) {
     const out = { ...inv } as Record<string, unknown>;
@@ -114,7 +119,11 @@ export class InvoiceService {
         skip,
         take: take ?? 50,
         where,
-        include: { contact: true, subscription: true, lines: { include: { product: true } } },
+        include: {
+          contact: true,
+          subscription: true,
+          lines: { include: { product: true } },
+        },
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.invoice.count({ where }),
@@ -125,7 +134,11 @@ export class InvoiceService {
   async findOne(id: number) {
     const inv = await this.prisma.invoice.findUnique({
       where: { id },
-      include: { contact: true, subscription: true, lines: { include: { product: true } } },
+      include: {
+        contact: true,
+        subscription: true,
+        lines: { include: { product: true } },
+      },
     });
     if (!inv) throw new NotFoundException('Invoice not found');
     return this.serializeInvoice(inv);
@@ -140,21 +153,86 @@ export class InvoiceService {
     const updated = await this.prisma.invoice.update({
       where: { id },
       data: { state: 'CONFIRMED' },
-      include: { contact: true, subscription: true, lines: { include: { product: true } } },
+      include: {
+        contact: true,
+        subscription: true,
+        lines: { include: { product: true } },
+      },
     });
     return this.serializeInvoice(updated);
   }
 
-  async markPaid(id: number) {
+  async cancel(id: number) {
+    const inv = await this.prisma.invoice.findUnique({ where: { id } });
+    if (!inv) throw new NotFoundException('Invoice not found');
+    if (inv.state === 'PAID') {
+      throw new BadRequestException('Paid invoices cannot be cancelled');
+    }
+    if (inv.state === 'CANCELLED') {
+      throw new BadRequestException('Invoice already cancelled');
+    }
+
+    const updated = await this.prisma.invoice.update({
+      where: { id },
+      data: {
+        state: 'CANCELLED',
+        paymentMethod: null,
+        paymentDate: null,
+      },
+      include: {
+        contact: true,
+        subscription: true,
+        lines: { include: { product: true } },
+      },
+    });
+
+    return this.serializeInvoice(updated);
+  }
+
+  async restoreToDraft(id: number) {
+    const inv = await this.prisma.invoice.findUnique({ where: { id } });
+    if (!inv) throw new NotFoundException('Invoice not found');
+    if (inv.state !== 'CANCELLED') {
+      throw new BadRequestException('Only cancelled invoices can be restored');
+    }
+
+    const updated = await this.prisma.invoice.update({
+      where: { id },
+      data: {
+        state: 'DRAFT',
+      },
+      include: {
+        contact: true,
+        subscription: true,
+        lines: { include: { product: true } },
+      },
+    });
+    return this.serializeInvoice(updated);
+  }
+
+  async markPaid(
+    id: number,
+    params?: { paymentMethod?: PaymentMethod; paymentDate?: Date },
+  ) {
     const inv = await this.prisma.invoice.findUnique({ where: { id } });
     if (!inv) throw new NotFoundException('Invoice not found');
     if (inv.state !== 'CONFIRMED') {
-      throw new BadRequestException('Only confirmed invoices can be marked paid');
+      throw new BadRequestException(
+        'Only confirmed invoices can be marked paid',
+      );
     }
     const updated = await this.prisma.invoice.update({
       where: { id },
-      data: { state: 'PAID' },
-      include: { contact: true, subscription: true, lines: { include: { product: true } } },
+      data: {
+        state: 'PAID',
+        paymentMethod: params?.paymentMethod ?? null,
+        paymentDate: params?.paymentDate ?? null,
+      },
+      include: {
+        contact: true,
+        subscription: true,
+        lines: { include: { product: true } },
+      },
     });
     return this.serializeInvoice(updated);
   }

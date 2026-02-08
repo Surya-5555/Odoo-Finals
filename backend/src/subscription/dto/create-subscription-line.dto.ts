@@ -1,9 +1,4 @@
-import {
-  IsNumber,
-  IsOptional,
-  Min,
-  IsInt,
-} from 'class-validator';
+import { IsNumber, IsOptional, Min, IsInt } from 'class-validator';
 
 export class CreateSubscriptionLineDto {
   @IsInt()

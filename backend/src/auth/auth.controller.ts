@@ -125,7 +125,10 @@ export class AuthController {
   @UseGuards(RolesGuard)
   @Roles('ADMIN')
   @Post('internal-user')
-  async createInternalUser(@Req() req: Request, @Body() dto: CreateInternalUserDto) {
+  async createInternalUser(
+    @Req() req: Request,
+    @Body() dto: CreateInternalUserDto,
+  ) {
     // JwtAuthGuard populates req.user
     const requestingUser = (req as any).user as { id: number; role: string };
     return this.authService.createInternalUser(requestingUser, dto);

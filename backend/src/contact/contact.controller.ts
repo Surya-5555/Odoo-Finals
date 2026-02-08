@@ -26,10 +26,16 @@ export class ContactController {
   findAll(
     @Query('skip') skip?: string,
     @Query('take') take?: string,
+    @Query('email') email?: string,
+    @Query('userId') userId?: string,
   ) {
     return this.contactService.findAll({
       skip: skip ? parseInt(skip, 10) : undefined,
       take: take ? parseInt(take, 10) : undefined,
+      where: {
+        ...(email ? { email } : {}),
+        ...(userId ? { userId: parseInt(userId, 10) } : {}),
+      },
     });
   }
 
