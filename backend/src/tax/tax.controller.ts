@@ -8,17 +8,26 @@ import {
   Patch,
   Post,
   Query,
+<<<<<<< HEAD
   UseGuards,
+=======
+  BadRequestException,
+>>>>>>> 34d8f0563272fc3ffddc6ac63922119f2dfd0da5
 } from '@nestjs/common';
 import { TaxService } from './tax.service';
 import { CreateTaxDto } from './dto/create-tax.dto';
 import { UpdateTaxDto } from './dto/update-tax.dto';
+<<<<<<< HEAD
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guard/roles.guard';
 
 @Controller('taxes')
 @UseGuards(RolesGuard)
 @Roles('ADMIN')
+=======
+
+@Controller('taxes')
+>>>>>>> 34d8f0563272fc3ffddc6ac63922119f2dfd0da5
 export class TaxController {
   constructor(private readonly taxService: TaxService) {}
 
@@ -31,12 +40,30 @@ export class TaxController {
   findAll(
     @Query('skip') skip?: string,
     @Query('take') take?: string,
+<<<<<<< HEAD
     @Query('active') active?: string,
   ) {
     return this.taxService.findAll({
       skip: skip ? parseInt(skip, 10) : undefined,
       take: take ? parseInt(take, 10) : undefined,
       active: active != null ? active === 'true' : undefined,
+=======
+    @Query('q') q?: string,
+    @Query('isActive') isActive?: string,
+  ) {
+    let isActiveBool: boolean | undefined = undefined;
+    if (isActive !== undefined) {
+      if (isActive === 'true') isActiveBool = true;
+      else if (isActive === 'false') isActiveBool = false;
+      else throw new BadRequestException('isActive must be true or false');
+    }
+
+    return this.taxService.findAll({
+      skip: skip ? parseInt(skip, 10) : undefined,
+      take: take ? parseInt(take, 10) : undefined,
+      q: q?.trim() ? q.trim() : undefined,
+      isActive: isActiveBool,
+>>>>>>> 34d8f0563272fc3ffddc6ac63922119f2dfd0da5
     });
   }
 

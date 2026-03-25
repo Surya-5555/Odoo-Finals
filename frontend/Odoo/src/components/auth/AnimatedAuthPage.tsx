@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
@@ -27,6 +27,7 @@ const Pupil = ({
 }: PupilProps) => {
   const [mouseX, setMouseX] = useState<number>(0)
   const [mouseY, setMouseY] = useState<number>(0)
+  const [pupilRect, setPupilRect] = useState<DOMRect | null>(null)
   const pupilRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -39,27 +40,40 @@ const Pupil = ({
     return () => window.removeEventListener('mousemove', handleMouseMove)
   }, [])
 
-  const calculatePupilPosition = () => {
-    if (!pupilRef.current) return { x: 0, y: 0 }
+  useLayoutEffect(() => {
+    if (!pupilRef.current) return
+
+    const update = () => {
+      if (!pupilRef.current) return
+      setPupilRect(pupilRef.current.getBoundingClientRect())
+    }
+
+    update()
+    window.addEventListener('resize', update)
+    window.addEventListener('scroll', update, true)
+    return () => {
+      window.removeEventListener('resize', update)
+      window.removeEventListener('scroll', update, true)
+    }
+  }, [])
+
+  const pupilPosition = React.useMemo(() => {
     if (forceLookX !== undefined && forceLookY !== undefined) {
       return { x: forceLookX, y: forceLookY }
     }
 
-    const pupil = pupilRef.current.getBoundingClientRect()
-    const pupilCenterX = pupil.left + pupil.width / 2
-    const pupilCenterY = pupil.top + pupil.height / 2
+    if (!pupilRect) return { x: 0, y: 0 }
 
+    const pupilCenterX = pupilRect.left + pupilRect.width / 2
+    const pupilCenterY = pupilRect.top + pupilRect.height / 2
     const deltaX = mouseX - pupilCenterX
     const deltaY = mouseY - pupilCenterY
     const distance = Math.min(Math.sqrt(deltaX ** 2 + deltaY ** 2), maxDistance)
     const angle = Math.atan2(deltaY, deltaX)
     const x = Math.cos(angle) * distance
     const y = Math.sin(angle) * distance
-
     return { x, y }
-  }
-
-  const pupilPosition = calculatePupilPosition()
+  }, [forceLookX, forceLookY, maxDistance, mouseX, mouseY, pupilRect])
 
   return (
     <div
@@ -99,6 +113,7 @@ const EyeBall = ({
 }: EyeBallProps) => {
   const [mouseX, setMouseX] = useState<number>(0)
   const [mouseY, setMouseY] = useState<number>(0)
+  const [eyeRect, setEyeRect] = useState<DOMRect | null>(null)
   const eyeRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -111,27 +126,40 @@ const EyeBall = ({
     return () => window.removeEventListener('mousemove', handleMouseMove)
   }, [])
 
-  const calculatePupilPosition = () => {
-    if (!eyeRef.current) return { x: 0, y: 0 }
+  useLayoutEffect(() => {
+    if (!eyeRef.current) return
+
+    const update = () => {
+      if (!eyeRef.current) return
+      setEyeRect(eyeRef.current.getBoundingClientRect())
+    }
+
+    update()
+    window.addEventListener('resize', update)
+    window.addEventListener('scroll', update, true)
+    return () => {
+      window.removeEventListener('resize', update)
+      window.removeEventListener('scroll', update, true)
+    }
+  }, [])
+
+  const pupilPosition = React.useMemo(() => {
     if (forceLookX !== undefined && forceLookY !== undefined) {
       return { x: forceLookX, y: forceLookY }
     }
 
-    const eye = eyeRef.current.getBoundingClientRect()
-    const eyeCenterX = eye.left + eye.width / 2
-    const eyeCenterY = eye.top + eye.height / 2
+    if (!eyeRect) return { x: 0, y: 0 }
 
+    const eyeCenterX = eyeRect.left + eyeRect.width / 2
+    const eyeCenterY = eyeRect.top + eyeRect.height / 2
     const deltaX = mouseX - eyeCenterX
     const deltaY = mouseY - eyeCenterY
     const distance = Math.min(Math.sqrt(deltaX ** 2 + deltaY ** 2), maxDistance)
     const angle = Math.atan2(deltaY, deltaX)
     const x = Math.cos(angle) * distance
     const y = Math.sin(angle) * distance
-
     return { x, y }
-  }
-
-  const pupilPosition = calculatePupilPosition()
+  }, [forceLookX, forceLookY, maxDistance, mouseX, mouseY, eyeRect])
 
   return (
     <div
@@ -193,11 +221,9 @@ export function AnimatedAuthPage({ initialMode = 'login' }: AnimatedAuthPageProp
   const navigate = useNavigate()
 
   const AUTH_BG = {
-    leftFrom: '#3B82F6',
-    leftVia: '#3474E8',
-    leftTo: '#2C66DB',
-    rightBase: '#060B18',
-    rightGlow: 'rgba(59, 130, 246, 0.10)',
+    leftFrom: '#F7F4FB',
+    leftVia: '#EEF2FF',
+    leftTo: '#F8FAFF',
   } as const
 
   useEffect(() => {
@@ -301,9 +327,25 @@ export function AnimatedAuthPage({ initialMode = 'login' }: AnimatedAuthPageProp
           throw new Error(errorData.message || 'Invalid credentials')
         }
 
-        const data = (await res.json()) as { accessToken: string }
-        login(data.accessToken, rememberMe)
-        navigate('/dashboard')
+        const data = (await res.json()) as { accessToken: string; user?: any }
+
+        // Always sync user from DB so role changes in DB reflect correctly.
+        let me: any = null
+        try {
+          const meRes = await fetch(`${API_BASE_URL}/users/me`, {
+            method: 'GET',
+            headers: { Authorization: `Bearer ${data.accessToken}` },
+            credentials: 'include',
+          })
+          if (meRes.ok) me = await meRes.json()
+        } catch {
+          // ignore
+        }
+
+        login(data.accessToken, me ?? (data as any).user ?? null, rememberMe)
+        const role = (me ?? (data as any)?.user)?.role as string | undefined
+        if (role === 'PORTAL') navigate('/portal/home')
+        else navigate('/app/overview')
       } else {
         if (password !== confirmPassword) {
           setError('Passwords do not match')
@@ -350,9 +392,9 @@ export function AnimatedAuthPage({ initialMode = 'login' }: AnimatedAuthPageProp
   }
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2 relative">
+    <div className="min-h-screen grid lg:grid-cols-2 relative bg-background text-foreground">
       <div
-        className="relative hidden lg:flex flex-col justify-between p-12 text-primary-foreground overflow-hidden"
+        className="relative hidden lg:flex flex-col justify-between p-12 text-foreground overflow-hidden"
         style={{
           background: `linear-gradient(135deg, ${AUTH_BG.leftFrom} 0%, ${AUTH_BG.leftVia} 55%, ${AUTH_BG.leftTo} 100%)`,
         }}
@@ -602,14 +644,14 @@ export function AnimatedAuthPage({ initialMode = 'login' }: AnimatedAuthPageProp
           </div>
         </div>
 
-        <div className="relative z-20 flex items-center gap-8 text-sm text-primary-foreground/60">
-          <a href="#" className="hover:text-primary-foreground transition-colors">
+        <div className="relative z-20 flex items-center gap-8 text-sm text-muted-foreground">
+          <a href="#" className="hover:text-foreground transition-colors">
             Privacy Policy
           </a>
-          <a href="#" className="hover:text-primary-foreground transition-colors">
+          <a href="#" className="hover:text-foreground transition-colors">
             Terms of Service
           </a>
-          <a href="#" className="hover:text-primary-foreground transition-colors">
+          <a href="#" className="hover:text-foreground transition-colors">
             Contact
           </a>
         </div>
@@ -618,22 +660,18 @@ export function AnimatedAuthPage({ initialMode = 'login' }: AnimatedAuthPageProp
           className="absolute inset-0 opacity-20"
           style={{
             backgroundImage:
-              'linear-gradient(to right, rgba(255,255,255,0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.08) 1px, transparent 1px)',
+              'linear-gradient(to right, rgba(0,0,0,0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,0.06) 1px, transparent 1px)',
             backgroundSize: '20px 20px',
           }}
         />
-        <div className="absolute top-1/4 right-1/4 w-64 h-64 bg-primary-foreground/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-primary-foreground/5 rounded-full blur-3xl" />
+        <div className="absolute top-1/4 right-1/4 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
       </div>
 
-      <div
-        className="flex items-center justify-center p-8 relative"
-        style={{
-          background: `radial-gradient(900px 520px at 20% 15%, ${AUTH_BG.rightGlow} 0%, rgba(0,0,0,0) 60%), ${AUTH_BG.rightBase}`,
-        }}
-      >
-        <div className="w-full max-w-105">
-          <div className="lg:hidden mb-12" aria-hidden />
+      <div className="flex items-center justify-center p-8 relative bg-background">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(121,83,135,0.14),transparent_55%),radial-gradient(circle_at_80%_30%,rgba(59,130,246,0.10),transparent_55%)]" />
+
+        <div className="relative w-full max-w-105 rounded-2xl border border-border bg-card p-8 shadow-sm">
 
           <div className="text-center mb-10 transition-all duration-300">
             <h1
@@ -767,7 +805,7 @@ export function AnimatedAuthPage({ initialMode = 'login' }: AnimatedAuthPageProp
             )}
 
             {error && (
-              <div className="p-3 text-sm text-red-300 bg-red-950/20 border border-red-900/30 rounded-lg animate-in slide-in-from-top duration-200">
+              <div className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg animate-in slide-in-from-top duration-200">
                 {error}
               </div>
             )}

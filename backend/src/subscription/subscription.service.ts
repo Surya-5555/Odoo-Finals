@@ -46,6 +46,7 @@ export class SubscriptionService {
     return Math.round(amount * 100) / 100;
   }
 
+<<<<<<< HEAD
   private async resolveDiscount(input: {
     discountId?: number;
     discountPercent?: number;
@@ -154,6 +155,33 @@ export class SubscriptionService {
       throw new BadRequestException('Tax has expired');
     }
     return { taxId: tax.id, taxPercent: Number(tax.percentage) };
+=======
+  private async getValidDiscountOrThrow(code: string) {
+    const normalized = code.trim().toUpperCase();
+    if (!normalized) throw new BadRequestException('Discount code required');
+
+    const d = await this.prisma.discount.findUnique({
+      where: { code: normalized },
+    });
+    if (!d || !d.isActive) throw new BadRequestException('Invalid discount code');
+
+    const t = new Date();
+    if (d.startsAt && t < d.startsAt)
+      throw new BadRequestException('Discount not active yet');
+    if (d.endsAt && t > d.endsAt)
+      throw new BadRequestException('Discount expired');
+
+    if (d.limitUsage) {
+      if (!d.usageLimit || d.usageLimit < 1) {
+        throw new BadRequestException('Discount misconfigured: usageLimit missing');
+      }
+      if (d.timesUsed >= d.usageLimit) {
+        throw new BadRequestException('Discount usage limit reached');
+      }
+    }
+
+    return d;
+>>>>>>> 34d8f0563272fc3ffddc6ac63922119f2dfd0da5
   }
 
   async create(dto: CreateSubscriptionDto) {
@@ -168,7 +196,28 @@ export class SubscriptionService {
     });
     if (!plan) throw new NotFoundException('Recurring plan not found');
 
+    const portalDiscountCode = dto.portal?.discountCode?.trim();
+    const discount = portalDiscountCode
+      ? await this.getValidDiscountOrThrow(portalDiscountCode)
+      : null;
+    const discountPercent = discount ? Number(discount.percent) : null;
+
     const lines = dto.lines ?? [];
+    if (discount && lines.length === 0) {
+      throw new BadRequestException(
+        'Discount code cannot be applied without order lines',
+      );
+    }
+
+    if (discount?.productId != null) {
+      const hasEligible = lines.some((l) => l.productId === discount.productId);
+      if (!hasEligible) {
+        throw new BadRequestException(
+          'Discount not applicable to selected products',
+        );
+      }
+    }
+
     const lineCreates: Prisma.SubscriptionLineCreateWithoutSubscriptionInput[] =
       [];
     const discountIdsToIncrement: number[] = [];
@@ -179,6 +228,7 @@ export class SubscriptionService {
       if (!product)
         throw new NotFoundException(`Product ${line.productId} not found`);
 
+<<<<<<< HEAD
       const resolvedDiscount = await this.resolveDiscount({
         discountId: line.discountId,
         discountPercent: line.discountPercent,
@@ -191,13 +241,28 @@ export class SubscriptionService {
         taxId: line.taxId,
         taxPercent: line.taxPercent,
       });
+=======
+      const effectiveDiscountPercent =
+        line.discountPercent != null
+          ? line.discountPercent
+          : discount && discountPercent != null
+            ? discount.productId == null || discount.productId === line.productId
+              ? discountPercent
+              : undefined
+            : undefined;
+>>>>>>> 34d8f0563272fc3ffddc6ac63922119f2dfd0da5
 
       const amount = this.computeLineAmount(
         line.quantity,
         line.unitPrice,
+<<<<<<< HEAD
         resolvedDiscount.discountPercent,
         resolvedTax.taxPercent,
         resolvedDiscount.discountFixed,
+=======
+        effectiveDiscountPercent,
+        line.taxPercent,
+>>>>>>> 34d8f0563272fc3ffddc6ac63922119f2dfd0da5
       );
       if (
         resolvedDiscount.shouldIncrementUsage &&
@@ -210,6 +275,7 @@ export class SubscriptionService {
         quantity: new Prisma.Decimal(line.quantity),
         unitPrice: new Prisma.Decimal(line.unitPrice),
         discountPercent:
+<<<<<<< HEAD
           resolvedDiscount.discountPercent != null
             ? new Prisma.Decimal(resolvedDiscount.discountPercent)
             : null,
@@ -229,12 +295,25 @@ export class SubscriptionService {
           resolvedTax.taxId != null
             ? { connect: { id: resolvedTax.taxId } }
             : undefined,
+=======
+          effectiveDiscountPercent != null
+            ? new Prisma.Decimal(effectiveDiscountPercent)
+            : null,
+        taxPercent: line.taxPercent
+          ? new Prisma.Decimal(line.taxPercent)
+          : null,
+>>>>>>> 34d8f0563272fc3ffddc6ac63922119f2dfd0da5
         amount: new Prisma.Decimal(amount),
       });
     }
 
+<<<<<<< HEAD
     const [subscription] = await this.prisma.$transaction([
       this.prisma.subscription.create({
+=======
+    const subscription = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.subscription.create({
+>>>>>>> 34d8f0563272fc3ffddc6ac63922119f2dfd0da5
         data: {
           number,
           contactId: dto.contactId,
@@ -255,6 +334,7 @@ export class SubscriptionService {
           lines: { include: { product: true } },
           paymentTerm: true,
         },
+<<<<<<< HEAD
       }),
       ...discountIdsToIncrement.map((id) =>
         this.prisma.discount.update({
@@ -263,6 +343,19 @@ export class SubscriptionService {
         }),
       ),
     ]);
+=======
+      });
+
+      if (discount?.limitUsage) {
+        await tx.discount.update({
+          where: { id: discount.id },
+          data: { timesUsed: { increment: 1 } },
+        });
+      }
+
+      return created;
+    });
+>>>>>>> 34d8f0563272fc3ffddc6ac63922119f2dfd0da5
     return this.serializeSubscription(subscription);
   }
 
@@ -298,8 +391,11 @@ export class SubscriptionService {
           l.discountPercent != null
             ? Number(l.discountPercent)
             : l.discountPercent,
+<<<<<<< HEAD
         discountFixed:
           l.discountFixed != null ? Number(l.discountFixed) : l.discountFixed,
+=======
+>>>>>>> 34d8f0563272fc3ffddc6ac63922119f2dfd0da5
         taxPercent: l.taxPercent != null ? Number(l.taxPercent) : l.taxPercent,
       }));
     return rec;
@@ -778,6 +874,7 @@ export class SubscriptionService {
       });
       if (!product)
         throw new NotFoundException(`Product ${line.productId} not found`);
+<<<<<<< HEAD
 
       const resolvedDiscount = await this.resolveDiscount({
         discountId: line.discountId,
@@ -792,6 +889,8 @@ export class SubscriptionService {
         taxPercent: line.taxPercent,
       });
 
+=======
+>>>>>>> 34d8f0563272fc3ffddc6ac63922119f2dfd0da5
       const amount = this.computeLineAmount(
         line.quantity,
         line.unitPrice,
@@ -809,6 +908,7 @@ export class SubscriptionService {
         product: { connect: { id: line.productId } },
         quantity: new Prisma.Decimal(line.quantity),
         unitPrice: new Prisma.Decimal(line.unitPrice),
+<<<<<<< HEAD
         discountPercent:
           resolvedDiscount.discountPercent != null
             ? new Prisma.Decimal(resolvedDiscount.discountPercent)
@@ -829,6 +929,14 @@ export class SubscriptionService {
           resolvedTax.taxId != null
             ? { connect: { id: resolvedTax.taxId } }
             : undefined,
+=======
+        discountPercent: line.discountPercent
+          ? new Prisma.Decimal(line.discountPercent)
+          : null,
+        taxPercent: line.taxPercent
+          ? new Prisma.Decimal(line.taxPercent)
+          : null,
+>>>>>>> 34d8f0563272fc3ffddc6ac63922119f2dfd0da5
         amount: new Prisma.Decimal(amount),
       });
     }

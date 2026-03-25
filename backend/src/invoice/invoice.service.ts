@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { InvoiceState, Prisma } from '@prisma/client';
+import { InvoiceState, PaymentMethod, Prisma } from '@prisma/client';
 
 @Injectable()
 export class InvoiceService {
@@ -195,8 +195,11 @@ export class InvoiceService {
       unitPrice: unknown;
       quantity: unknown;
       taxPercent: unknown;
+<<<<<<< HEAD
       discountPercent: unknown;
       discountFixed: unknown;
+=======
+>>>>>>> 34d8f0563272fc3ffddc6ac63922119f2dfd0da5
     }[];
     [k: string]: unknown;
   }) {
@@ -254,6 +257,7 @@ export class InvoiceService {
   }
 
   async findOne(id: number) {
+<<<<<<< HEAD
     return this.findOneScoped(id);
   }
 
@@ -268,6 +272,10 @@ export class InvoiceService {
           ? { contact: { userId: requestingUser.id } }
           : {}),
       },
+=======
+    const inv = await this.prisma.invoice.findUnique({
+      where: { id },
+>>>>>>> 34d8f0563272fc3ffddc6ac63922119f2dfd0da5
       include: {
         contact: true,
         subscription: true,
@@ -296,7 +304,58 @@ export class InvoiceService {
     return this.serializeInvoice(updated);
   }
 
-  async markPaid(id: number) {
+  async cancel(id: number) {
+    const inv = await this.prisma.invoice.findUnique({ where: { id } });
+    if (!inv) throw new NotFoundException('Invoice not found');
+    if (inv.state === 'PAID') {
+      throw new BadRequestException('Paid invoices cannot be cancelled');
+    }
+    if (inv.state === 'CANCELLED') {
+      throw new BadRequestException('Invoice already cancelled');
+    }
+
+    const updated = await this.prisma.invoice.update({
+      where: { id },
+      data: {
+        state: 'CANCELLED',
+        paymentMethod: null,
+        paymentDate: null,
+      },
+      include: {
+        contact: true,
+        subscription: true,
+        lines: { include: { product: true } },
+      },
+    });
+
+    return this.serializeInvoice(updated);
+  }
+
+  async restoreToDraft(id: number) {
+    const inv = await this.prisma.invoice.findUnique({ where: { id } });
+    if (!inv) throw new NotFoundException('Invoice not found');
+    if (inv.state !== 'CANCELLED') {
+      throw new BadRequestException('Only cancelled invoices can be restored');
+    }
+
+    const updated = await this.prisma.invoice.update({
+      where: { id },
+      data: {
+        state: 'DRAFT',
+      },
+      include: {
+        contact: true,
+        subscription: true,
+        lines: { include: { product: true } },
+      },
+    });
+    return this.serializeInvoice(updated);
+  }
+
+  async markPaid(
+    id: number,
+    params?: { paymentMethod?: PaymentMethod; paymentDate?: Date },
+  ) {
     const inv = await this.prisma.invoice.findUnique({ where: { id } });
     if (!inv) throw new NotFoundException('Invoice not found');
     if (inv.state !== 'CONFIRMED') {
@@ -306,6 +365,7 @@ export class InvoiceService {
     }
     const updated = await this.prisma.invoice.update({
       where: { id },
+<<<<<<< HEAD
       data: { state: 'PAID' },
       include: {
         contact: true,
@@ -328,6 +388,13 @@ export class InvoiceService {
     const updated = await this.prisma.invoice.update({
       where: { id },
       data: { state: 'CANCELLED' },
+=======
+      data: {
+        state: 'PAID',
+        paymentMethod: params?.paymentMethod ?? null,
+        paymentDate: params?.paymentDate ?? null,
+      },
+>>>>>>> 34d8f0563272fc3ffddc6ac63922119f2dfd0da5
       include: {
         contact: true,
         subscription: true,

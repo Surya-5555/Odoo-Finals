@@ -13,16 +13,27 @@ import { ProductModule } from './product/product.module';
 import { InvoiceModule } from './invoice/invoice.module';
 import { PaymentTermModule } from './payment-term/payment-term.module';
 import { QuotationTemplateModule } from './quotation-template/quotation-template.module';
+<<<<<<< HEAD
 import { DiscountModule } from './discount/discount.module';
 import { TaxModule } from './tax/tax.module';
 import { PaymentModule } from './payment/payment.module';
 import { ReportModule } from './report/report.module';
 import { ScheduleModule } from '@nestjs/schedule';
+=======
+import { TaxModule } from './tax/tax.module';
+import { PrismaModule } from './prisma/prisma.module';
+import { DiscountModule } from './discount/discount.module';
+import { ReportingModule } from './reporting/reporting.module';
+import { UserModule } from './user/user.module';
+>>>>>>> 34d8f0563272fc3ffddc6ac63922119f2dfd0da5
 
 @Module({
   imports: [
+    PrismaModule,
     ConfigModule.forRoot({
       isGlobal: true,
+      // Support starting the server from either repo root or the backend folder.
+      envFilePath: ['.env', 'backend/.env'],
     }),
     ScheduleModule.forRoot(),
     AuthModule,
@@ -33,10 +44,17 @@ import { ScheduleModule } from '@nestjs/schedule';
     InvoiceModule,
     PaymentTermModule,
     QuotationTemplateModule,
+<<<<<<< HEAD
     DiscountModule,
     TaxModule,
     PaymentModule,
     ReportModule,
+=======
+    TaxModule,
+    DiscountModule,
+    ReportingModule,
+    UserModule,
+>>>>>>> 34d8f0563272fc3ffddc6ac63922119f2dfd0da5
   ],
   controllers: [AppController],
   providers: [

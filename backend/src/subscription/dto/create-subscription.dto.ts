@@ -7,6 +7,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CreateSubscriptionLineDto } from './create-subscription-line.dto';
+import { PortalCheckoutDto } from './portal-checkout.dto';
 
 export class CreateSubscriptionDto {
   @IsInt()
@@ -40,4 +41,9 @@ export class CreateSubscriptionDto {
   @ValidateNested({ each: true })
   @Type(() => CreateSubscriptionLineDto)
   lines?: CreateSubscriptionLineDto[];
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => PortalCheckoutDto)
+  portal?: PortalCheckoutDto;
 }

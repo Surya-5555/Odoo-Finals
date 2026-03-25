@@ -3,7 +3,40 @@
 @import 'tailwindcss';
 
 :root {
-  /* Force dark defaults (prod look stays dark even on light OS theme) */
+  /* Light mode defaults (Odoo-like palette) */
+  color-scheme: light;
+
+  --background: 210 20% 98%;
+  --foreground: 222.2 47.4% 11.2%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 47.4% 11.2%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 47.4% 11.2%;
+
+  /* Odoo-ish purple */
+  --primary: 316 20% 37%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 210 16% 93%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+  --muted: 210 16% 96%;
+  --muted-foreground: 215 16% 47%;
+  --accent: 210 16% 90%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 214.3 14.3% 90.2%;
+  --input: 214.3 14.3% 90.2%;
+  --ring: 316 20% 37%;
+  --radius: 0.5rem;
+
+  --font-kalam: 'Kalam';
+  --font-caveat: 'Caveat';
+}
+
+.dark {
   color-scheme: dark;
 
   --background: 222.2 84% 4.9%;
@@ -25,10 +58,6 @@
   --border: 217.2 32.6% 17.5%;
   --input: 217.2 32.6% 17.5%;
   --ring: 224.3 76.3% 48%;
-  --radius: 0.5rem;
-
-  --font-kalam: 'Kalam';
-  --font-caveat: 'Caveat';
 }
 
 @theme inline {
@@ -66,6 +95,27 @@ body {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
   font-family: var(--font-sans);
+}
+
+@media print {
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  /* Avoid printing app chrome/backgrounds */
+  header,
+  nav {
+    display: none !important;
+  }
+
+  .shadow,
+  .shadow-sm,
+  .shadow-md,
+  .shadow-lg {
+    box-shadow: none !important;
+  }
 }
 
 .font-handwriting {

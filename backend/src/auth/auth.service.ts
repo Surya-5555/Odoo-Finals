@@ -14,6 +14,8 @@ import { PrismaService } from '../../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { randomBytes, createHash } from 'crypto';
+import { EmailService } from '../email/email.service';
+import { ConfigService } from '@nestjs/config';
 
 type JwtUser = { id: number; email: string; role: string };
 
@@ -22,6 +24,8 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly emailService: EmailService,
+    private readonly config: ConfigService,
   ) {}
 
   // signup service logic
@@ -43,6 +47,7 @@ export class AuthService {
 
       const hashedPassword = await bcrypt.hash(dto.password, 10);
 
+<<<<<<< HEAD
       const user = await this.prisma.user.create({
         data: {
           name: dto.name,
@@ -63,6 +68,27 @@ export class AuthService {
           role: true,
           createdAt: true,
         },
+=======
+      const user = await this.prisma.$transaction(async (tx) => {
+        const createdUser = await tx.user.create({
+          data: {
+            name: dto.name,
+            email: dto.email,
+            password: hashedPassword,
+            role: 'PORTAL',
+          },
+        });
+
+        await tx.contact.create({
+          data: {
+            name: dto.name,
+            email: dto.email,
+            userId: createdUser.id,
+          },
+        });
+
+        return createdUser;
+>>>>>>> 34d8f0563272fc3ffddc6ac63922119f2dfd0da5
       });
 
       return user;
@@ -238,18 +264,29 @@ export class AuthService {
   }
 
   async forgotPassword(dto: ForgotPasswordDto) {
+    // Always return a generic message to avoid account enumeration.
+    const genericResponse = {
+      message:
+        'If an account exists for this email, a password reset link will be sent shortly.',
+    };
+
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
 
     if (!user) {
-      throw new BadRequestException('Account not exist');
+      return genericResponse;
     }
 
     const plainToken = randomBytes(48).toString('hex');
     const tokenHash = createHash('sha256').update(plainToken).digest('hex');
-
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+    // Invalidate any outstanding reset tokens for this user before issuing a new one.
+    await this.prisma.passwordResetToken.updateMany({
+      where: { userId: user.id, usedAt: null },
+      data: { usedAt: new Date() },
+    });
 
     await this.prisma.passwordResetToken.create({
       data: {
@@ -259,11 +296,21 @@ export class AuthService {
       },
     });
 
-    // In production you would email the reset link containing `plainToken`.
-    return {
-      message: 'The password reset link has been sent to your email.',
-      ...(process.env.NODE_ENV !== 'production' ? { token: plainToken } : {}),
-    };
+    const frontendBaseUrl = this.config.get<string>('FRONTEND_URL');
+    if (!frontendBaseUrl) {
+      throw new BadRequestException('FRONTEND_URL is not configured');
+    }
+
+    const resetUrl = new URL('/reset-password', frontendBaseUrl);
+    resetUrl.searchParams.set('token', plainToken);
+
+    await this.emailService.sendPasswordResetEmail({
+      to: user.email,
+      name: user.name,
+      resetUrl: resetUrl.toString(),
+    });
+
+    return genericResponse;
   }
 
   async resetPassword(dto: ResetPasswordDto) {
@@ -288,8 +335,17 @@ export class AuthService {
         where: { id: tokenRecord.userId },
         data: { password: hashedPassword },
       }),
+      // Invalidate all active refresh tokens after password reset.
+      this.prisma.refreshToken.deleteMany({
+        where: { userId: tokenRecord.userId },
+      }),
       this.prisma.passwordResetToken.update({
         where: { id: tokenRecord.id },
+        data: { usedAt: new Date() },
+      }),
+      // Invalidate any other outstanding reset tokens.
+      this.prisma.passwordResetToken.updateMany({
+        where: { userId: tokenRecord.userId, usedAt: null },
         data: { usedAt: new Date() },
       }),
     ]);
