@@ -9,21 +9,14 @@
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "prisma:generate": "prisma generate",
-<<<<<<< HEAD
-    "postinstall": "node scripts/prisma-generate-safe.cjs",
-    "start": "nest start",
-    "start:dev": "nest start --watch",
-    "prestart:dev": "node scripts/prisma-generate-safe.cjs",
-=======
     "prisma:generate:clean": "node -e \"const fs=require('fs'); const p='node_modules/.prisma'; try{fs.rmSync(p,{recursive:true,force:true});}catch(e){}\" && prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
-    "postinstall": "prisma generate || echo Prisma generate failed (likely Windows file lock). Run npm run prisma:generate:clean after stopping node.exe processes.",
+    "postinstall": "node scripts/prisma-generate-safe.cjs",
     "start": "nest start",
     "start:dev": "nest start --watch",
-    "prestart:dev": "node scripts/prisma-generate-retry.js",
->>>>>>> 34d8f0563272fc3ffddc6ac63922119f2dfd0da5
+    "prestart:dev": "node scripts/prisma-generate-safe.cjs",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/src/main.js",
     "prestart:prod": "node scripts/prisma-generate-safe.cjs",
